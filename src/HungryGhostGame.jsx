@@ -115,11 +115,11 @@ const MeritSlider = ({ merit, realm = 'human', playerColor = '' }) => {
 
   const getHeartPositions = () => {
     if (realm === 'heaven' && merit > 0) {
-      // Hearts fill gaps from +1 up to but NOT including merit marker
-      return Array.from({length: merit - 1}, (_, i) => i + 1);
+      // Hearts fill gaps from 0 up to but NOT including merit marker
+      return Array.from({length: merit}, (_, i) => i);
     } else if (realm === 'hell' && merit < 0) {
-      // Hearts fill gaps from -1 down to but NOT including merit marker
-      return Array.from({length: Math.abs(merit) - 1}, (_, i) => -(i + 1));
+      // Hearts fill gaps from 0 down to but NOT including merit marker
+      return Array.from({length: Math.abs(merit)}, (_, i) => -i);
     }
     return [];
   };
@@ -302,21 +302,15 @@ const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana =
 
 // Delusion Grid
 const DelusionGrid = ({ delusion, playerColor = '' }) => {
-    const getCloudColor = () => {
-        if (playerColor.includes('blue')) return "text-blue-600 fill-blue-500";
-        if (playerColor.includes('green')) return "text-green-600 fill-green-500";
-        if (playerColor.includes('red')) return "text-red-600 fill-red-500";
-        return "text-stone-600 fill-stone-500";
-    };
 
     return (
-        <div className="grid grid-cols-10 gap-1 w-fit p-1">
+        <div className="grid grid-cols-10 gap-0.5 w-fit p-0.5">
             {[...Array(30)].map((_, i) => (
                 <div key={i} className="flex items-center justify-center">
                     {i < delusion ? (
-                        <Cloud size={12} className={getCloudColor()} />
+                        <span className="text-sm">☁️</span>
                     ) : (
-                        <Cloud size={12} className="text-stone-400 opacity-30" />
+                        <div className="w-4 h-4 rounded-full border border-stone-300 bg-stone-100 opacity-40"></div>
                     )}
                 </div>
             ))}
@@ -434,6 +428,23 @@ const HungryGhostGame = () => {
       }
   }, [phase]);
 
+  // Auto-advance spiritual realm players to evening
+  useEffect(() => {
+      if (currentPlayer.realm !== 'human' && phase !== 'evening') {
+          const timeoutId = setTimeout(() => {
+              if (phase === 'morning') {
+                  setPhase('afternoon');
+                  addLog("Time passes in the spiritual realm...", "neutral");
+              } else if (phase === 'afternoon') {
+                  setPhase('evening');
+                  addLog("Evening arrives in the spiritual realm.", "neutral");
+              }
+          }, 1000); // Small delay to show the auto-advance message
+
+          return () => clearTimeout(timeoutId);
+      }
+  }, [currentPlayer.realm, phase]);
+
   // --- Helper Logic ---
 
   const getPlayersAt = (locId) => players.filter(p => p.location === locId && p.realm === 'human');
@@ -536,6 +547,10 @@ const HungryGhostGame = () => {
         const teachers = playersAtTarget.filter(p => p.isTeacher);
         if (teachers.length > 0 && !newMe.isMeditator) {
             newMe.isMeditator = true;
+            // Log the meditation learning
+            setTimeout(() => {
+                addLog(`${newMe.name} learned meditation from ${teachers[0].name}`, "player", newMe.id);
+            }, 100);
             // Teachers gain merit
             updatedPlayers = updatedPlayers.map(p => {
                 if (p.isTeacher && p.location === targetLoc && p.id !== me.id) {
@@ -775,17 +790,21 @@ const HungryGhostGame = () => {
 
           // After animation delay, update position and collect heart
           setTimeout(() => {
-              updatePlayer(currentPlayer.id, (prev) => ({
-                  agePosition: newPosition,
-                  life: prev.life + 1,
-                  removingHeart: null
-              }));
+              updatePlayer(currentPlayer.id, (prev) => {
+                  console.log(`Age: Moving head from ${prev.agePosition} to ${newPosition}, collecting heart`);
+                  return {
+                      agePosition: newPosition,
+                      life: prev.life + 1,
+                      removingHeart: null
+                  };
+              });
 
               setShowEveningChoice(false);
               advancePhase();
           }, 500);
       } else {
           // No heart to collect, just move position
+          console.log(`Age (no heart): Moving head from ${currentPlayer.agePosition} to ${newPosition}`);
           updatePlayer(currentPlayer.id, { agePosition: newPosition });
           setShowEveningChoice(false);
           advancePhase();
@@ -803,16 +822,20 @@ const HungryGhostGame = () => {
       const newPosition = currentPos + 1;
 
       // Start coin removal animation from dana track (representing payment)
+      // Animate the rightmost coin (dana - 1) being removed
       updatePlayer(currentPlayer.id, { removingCoin: currentPlayer.dana - 1 });
 
       // After animation delay, complete the payment
       setTimeout(() => {
-          updatePlayer(currentPlayer.id, (prev) => ({
-              dana: prev.dana - 1,
-              agePosition: newPosition,
-              placedDana: [...(prev.placedDana || []), currentPos], // Place dana at current position before moving
-              removingCoin: null
-          }));
+          updatePlayer(currentPlayer.id, (prev) => {
+              console.log(`Extend: Moving head from ${prev.agePosition} to ${newPosition}, placing dana at ${currentPos}`);
+              return {
+                  dana: prev.dana - 1,
+                  agePosition: newPosition,
+                  placedDana: [...(prev.placedDana || []), currentPos], // Place dana at current position before moving
+                  removingCoin: null
+              };
+          });
 
           setShowEveningChoice(false);
           advancePhase();
@@ -851,7 +874,7 @@ const HungryGhostGame = () => {
           isGreedy: false,
           isMeditator: true,
           merit: currentPlayer.merit, // Keep current Merit instead of resetting to 0
-          agePosition: 0,
+          agePosition: -1,
           placedDana: []
       });
 
@@ -923,7 +946,7 @@ const HungryGhostGame = () => {
           isGreedy: nextRole.isGreedy,
           isMeditator: nextRole.isMeditator,
           merit: newMerit,
-          agePosition: 0, // Reset aging track
+          agePosition: -1, // Reset aging track - start before position 0 so there's a heart to knock off
           placedDana: [],  // Clear placed dana
           removingHeart: null, // Reset animations
           removingCoin: null,
@@ -1108,38 +1131,43 @@ const HungryGhostGame = () => {
                           {mustTakeRobes ? (
                               <div className="flex flex-col items-center justify-center h-full gap-2">
                                   <p className="text-xs text-orange-800 text-center font-bold">You have entered the Temple.</p>
-                                  <ActionButton label="Ordain 🥣" onClick={handleBecomeMonk} mandatory={true} icon={<span className="text-sm">🥣</span>} />
+                                  <ActionButton label="Ordain" onClick={handleBecomeMonk} mandatory={true} icon={<span className="text-sm">+🥣</span>} />
                               </div>
                           ) : currentPlayer.realm === 'human' && !showEveningChoice && phase !== 'evening' ? (
                               <>
-                                  <ActionButton label="Move 🚶" onClick={toggleMoveMode} active={isMoving} icon={<Move size={14}/>} />
-                                  <ActionButton label="Meditate 🧘" onClick={handleMeditate} disabled={isMoving || !currentPlayer.isMeditator} icon={<><ArrowDown size={10}/><Cloud size={12}/></>} />
-                                  <ActionButton label="Good Deed 😇" onClick={handleGoodDeed} disabled={isMoving || currentPlayer.dana < 1 || !canInteract} icon={<><ArrowDown size={10}/><DanaCoin size={10}/><ArrowUp size={10}/><YinYang size={10} filled={true}/></>} />
-                                  <ActionButton label="Bad Deed 😈" onClick={handleBadDeed} disabled={isMoving || !canInteract || currentPlayer.dana >= 10} icon={<><ArrowDown size={10}/><YinYang size={10} filled={true}/><ArrowUp size={10}/><DanaCoin size={10}/></>} />
-                                  <ActionButton label="Alms 🙏" onClick={handleAlms} disabled={isMoving || phase !== 'morning' || !currentPlayer.isMonk || currentPlayer.location !== 'town'} icon={<><ArrowUp size={10}/><DanaCoin size={10}/></>} />
+                                  <ActionButton label="Move" onClick={toggleMoveMode} active={isMoving} icon={<Move size={14}/>} />
+                                  <ActionButton label="Meditate" onClick={handleMeditate} disabled={isMoving || !currentPlayer.isMeditator} icon={<><ArrowDown size={10}/><Cloud size={12}/></>} />
+                                  <ActionButton label="Good Deed" onClick={handleGoodDeed} disabled={isMoving || currentPlayer.dana < 1 || !canInteract} icon={<><ArrowDown size={10}/><DanaCoin size={10}/><ArrowUp size={10}/><YinYang size={10} filled={true}/></>} />
+                                  <ActionButton label="Bad Deed" onClick={handleBadDeed} disabled={isMoving || !canInteract || currentPlayer.dana >= 10} icon={<><ArrowDown size={10}/><YinYang size={10} filled={true}/><ArrowUp size={10}/><DanaCoin size={10}/></>} />
+                                  <ActionButton label="Alms" onClick={handleAlms} disabled={isMoving || phase !== 'morning' || !currentPlayer.isMonk || currentPlayer.location !== 'town'} icon={<><ArrowUp size={10}/><DanaCoin size={10}/></>} />
                                   <ActionButton
-                                      label="Skip ⏭️"
+                                      label="Skip"
                                       onClick={advancePhase}
                                       disabled={isMoving}
-                                      icon={<>{phase === 'morning' ? <span className="text-xs">☀️</span> : <span className="text-xs">🌙</span>}</>}
+                                      icon={<><span className="text-xs">⏭️</span>{phase === 'morning' ? <span className="text-xs">☀️</span> : <span className="text-xs">🌙</span>}</>}
                                   />
                               </>
+                          ) : currentPlayer.realm !== 'human' && phase !== 'evening' ? (
+                              <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
+                                  <p className="text-[10px] text-gray-500">Time passes in <span className="font-bold uppercase">{currentPlayer.realm}</span></p>
+                                  <p className="text-xs text-gray-400">⏭️ Auto-advancing to Evening</p>
+                              </div>
                           ) : showEveningChoice ? (
                               <>
                                   <ActionButton
-                                      label="Age 👤→❤️"
+                                      label="Age"
                                       onClick={ageNormally}
                                       disabled={currentPlayer.agePosition >= 5}
                                       icon={<><span className="text-sm">👤</span><ArrowRight size={10}/><Heart size={12} className="text-red-500 fill-red-500"/><ArrowDown size={8}/></>}
                                   />
                                   <ActionButton
-                                      label="Extend 👤→🌕"
+                                      label="Extend"
                                       onClick={payToSurvive}
                                       disabled={currentPlayer.agePosition < 5 || currentPlayer.dana <= 0}
                                       icon={<><span className="text-sm">👤</span><ArrowRight size={10}/><DanaCoin size={12}/><ArrowDown size={8}/></>}
                                   />
                                   <ActionButton
-                                      label="Die 💀🔄"
+                                      label="Die"
                                       onClick={chooseToDie}
                                       disabled={currentPlayer.agePosition < 5}
                                       icon={<><span className="text-sm">💀</span><span className="text-sm">🔄</span></>}
@@ -1147,13 +1175,13 @@ const HungryGhostGame = () => {
                                   {currentPlayer.agePosition >= 5 && currentPlayer.insight >= WINNING_INSIGHT && (
                                       <>
                                           <ActionButton
-                                              label="Nirvana 🪷"
+                                              label="Nirvana"
                                               onClick={chooseNirvana}
                                               mandatory={true}
                                               icon={<><span className="text-sm">🪷</span><Trophy size={10}/></>}
                                           />
                                           <ActionButton
-                                              label="Bodhisattva 🧘🔄"
+                                              label="Bodhisattva"
                                               onClick={chooseBodhisattva}
                                               mandatory={true}
                                               icon={<><span className="text-sm">🧘</span><span className="text-sm">🔄</span></>}
@@ -1168,7 +1196,7 @@ const HungryGhostGame = () => {
                                           <p className="text-center text-xs font-bold text-green-600 mb-1">🏆 ENLIGHTENMENT ACHIEVED! 🏆</p>
                                           <p className="text-center text-[10px] text-gray-600 mb-2">You have broken the cycle of Samsara</p>
                                           <ActionButton
-                                              label="Nirvana 🪷"
+                                              label="Nirvana"
                                               onClick={confirmReincarnation}
                                               mandatory={true}
                                               icon={<span className="text-sm">🪷</span>}
@@ -1183,7 +1211,7 @@ const HungryGhostGame = () => {
                                               {pendingReincarnation.nextRole.isGreedy && <span className="block text-red-600">as Greedy</span>}
                                           </p>
                                           <ActionButton
-                                              label="Reincarnate 💀🔄"
+                                              label="Reincarnate"
                                               onClick={confirmReincarnation}
                                               mandatory={true}
                                               icon={<><span className="text-sm">💀</span><span className="text-sm">🔄</span></>}
@@ -1202,7 +1230,12 @@ const HungryGhostGame = () => {
                                       label="Pass Time"
                                       onClick={handlePassTime}
                                       mandatory={true}
-                                      icon={<ArrowRight size={14}/>}
+                                      icon={currentPlayer.realm === 'heaven' ?
+                                          <><YinYang size={10} filled={true}/><ArrowDown size={8}/><span className="text-xs">☁️</span><ArrowDown size={8}/></> :
+                                          currentPlayer.realm === 'hell' ?
+                                          <><YinYang size={10} filled={true}/><ArrowUp size={8}/><span className="text-xs">☁️</span><ArrowUp size={8}/></> :
+                                          <ArrowRight size={14}/>
+                                      }
                                   />
                               </div>
                           )}
