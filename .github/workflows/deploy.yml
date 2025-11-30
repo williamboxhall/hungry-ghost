@@ -1,5 +1,6 @@
 name: Deploy to GitHub Pages
 
+# Deploy game to GitHub Pages with automatic builds
 on:
   push:
     branches: [ main ]
