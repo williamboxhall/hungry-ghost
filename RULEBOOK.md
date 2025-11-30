@@ -11,8 +11,8 @@ To achieve Nirvana and break the cycle of Samsara. A player wins immediately if 
 Each player tracks the following on their board:
 
 * **Merit:** Karmic balance (-5 to +5). Starts at 0.  
-* **Life:** Turns remaining in the current life. Starts at 5.  
-* **Dana:** Currency / material resource used to perform Good Deeds or extend Life.  
+* **Life:** Hearts collected from the aging track. Your 👤 head starts at position 0 and moves through positions 1-5, collecting hearts along the way.
+* **Dana:** Currency / material resource used to perform Good Deeds or extend survival on the aging track.  
 * **Delusion:** Obscurations to clarity. Starts at 30. Must be reduced to 0 before Insight can be gained.  
 * **Insight:** Spiritual understanding. Gained only after Delusion is cleared. Resets to 0 upon death.
 
@@ -48,11 +48,15 @@ In each of these two phases, the active player performs **one** voluntary action
 
 ### **2. Evening (The Ritual)**
 
-The day ends and the toll of existence is paid.
+The day ends and aging takes its toll. Players must choose one of three options:
 
-**Remove 1 heart. If no hearts remaining, you may optionally spend 1 Dana to gain 1 temporary life (until the next evening). If no heart or Dana was spent, the player dies and reincarnates** (see *Reincarnation*).
+**Age:** Move your 👤 head one position forward on the aging track. If you encounter a heart, collect it (gain +1 Life). Available when not at end of track (position < 5).
 
-*Note: Dana can only provide temporary survival - it does not restore permanent life. Players with temporary life from Dana payment must either restore actual life or face death again the following evening.*
+**Extend:** Place 1 Dana coin at your current position, then move your head forward. Only available when you have no hearts left to collect (position ≥ 5) and have Dana to spend.
+
+**Die:** Accept death and reincarnate. Only available when at the end of the aging track with no Dana to extend life.
+
+*Note: The aging track represents your journey through life. You start at position 0 with hearts waiting at positions 1-5. Dana can extend survival but only after all hearts are collected.*
 
 ## **Player States & Passive Effects**
 
@@ -88,7 +92,7 @@ If a player is not in the Human Realm, they skip the Morning/Afternoon actions a
 When a player dies in the Human Realm:
 
 1. **Check for Nirvana:** If you have **7 Insight**, you achieve Nirvana and **WIN**.  
-2. **Reset Stats:** Dana and Insight are lost (reset to 0). Life resets to 5. Karmic factors Merit and Delusion remain unchanged.
+2. **Reset Stats:** Dana and Insight are lost (reset to 0). Life resets to 5 and aging track resets (👤 head returns to position 0 with fresh hearts at positions 1-5). Karmic factors Merit and Delusion remain unchanged.
 3. **Judge Merit:**  
    * **Positive:** Reincarnate in **Heaven**.  
    * **Negative:** Reincarnate in **Hell**.  
