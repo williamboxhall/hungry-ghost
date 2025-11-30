@@ -759,6 +759,37 @@ const HungryGhostGame = () => {
       setShowReincarnationChoice(true);
   };
 
+  const chooseNirvana = () => {
+      setWinner(currentPlayer);
+      addLog(`*** ${currentPlayer.name} HAS ACHIEVED NIRVANA! GAME OVER ***`, "neutral", currentPlayer.id);
+      setShowEveningChoice(false);
+      advancePhase();
+  };
+
+  const chooseBodhisattva = () => {
+      // Reincarnate as Teacher in Human Realm, keeping Merit
+      updatePlayer(currentPlayer.id, {
+          realm: 'human',
+          life: INITIAL_LIFE,
+          dana: 0,
+          insight: 0,
+          location: 'town',
+          dayCount: 1,
+          lifeCount: currentPlayer.lifeCount + 1,
+          isMonk: false,
+          isTeacher: true,
+          isGreedy: false,
+          isMeditator: true,
+          merit: currentPlayer.merit, // Keep current Merit instead of resetting to 0
+          agePosition: 0,
+          placedDana: []
+      });
+
+      addLog(`${currentPlayer.name} chose the Bodhisattva path - reborn as Teacher keeping Merit ${currentPlayer.merit >= 0 ? '+' : ''}${currentPlayer.merit}`, "player", currentPlayer.id);
+      setShowEveningChoice(false);
+      advancePhase();
+  };
+
   const prepareReincarnation = (player) => {
       if (player.insight >= WINNING_INSIGHT) {
           return { type: 'victory', player };
@@ -1033,6 +1064,22 @@ const HungryGhostGame = () => {
                                       disabled={currentPlayer.agePosition < 5 && currentPlayer.dana > 0}
                                       icon={<><span className="text-sm">💀</span><RotateCcw size={10}/></>}
                                   />
+                                  {currentPlayer.agePosition >= 5 && currentPlayer.insight >= WINNING_INSIGHT && (
+                                      <>
+                                          <ActionButton
+                                              label="Nirvana"
+                                              onClick={chooseNirvana}
+                                              mandatory={true}
+                                              icon={<><span className="text-sm">🪷</span><Trophy size={10}/></>}
+                                          />
+                                          <ActionButton
+                                              label="Bodhisattva"
+                                              onClick={chooseBodhisattva}
+                                              mandatory={true}
+                                              icon={<><span className="text-sm">🧘</span><RotateCcw size={10}/></>}
+                                          />
+                                      </>
+                                  )}
                               </>
                           ) : showReincarnationChoice && pendingReincarnation ? (
                               <div className="flex flex-col gap-2 h-full justify-center animate-in fade-in zoom-in duration-300">
