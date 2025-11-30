@@ -17,8 +17,8 @@ const INITIAL_LIFE = 5;
 // --- Visual Components ---
 
 const DanaCoin = ({ size = 16, className = "", faded = false }) => (
-  <div 
-    className={`rounded-full flex items-center justify-center font-bold shadow-sm leading-none select-none ${className} ${faded ? 'bg-stone-200 border-stone-300 text-stone-400' : 'bg-yellow-400 border border-yellow-600 text-yellow-900'}`} 
+  <div
+    className={`rounded-full flex items-center justify-center font-bold shadow-sm leading-none select-none ${faded ? 'bg-stone-200 border-stone-300 text-stone-400' : 'bg-yellow-400 border border-yellow-600 text-yellow-900'} ${className}`}
     style={{ width: size, height: size, fontSize: size * 0.65 }}
   >
     $
@@ -151,7 +151,7 @@ const MeritSlider = ({ merit, realm = 'human', playerColor = '' }) => {
 };
 
 // Life & Dana Track
-const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana = [] }) => {
+const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana = [], removingHeart = null, removingCoin = null, gainingDana = false }) => {
     const TOTAL_SLOTS = 16; // 1 aging position + 5 life + 10 dana
     const LIFE_SLOTS = 5;
     const DANA_SLOTS = 10;
@@ -243,7 +243,7 @@ const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana =
                                 <span className="absolute z-20 text-sm">👤</span>
                             )}
                             {!heartCollected && !isHeadHere && !hasDana && (
-                                <Heart size={12} className={`${getHeartColor()} drop-shadow-sm`} />
+                                <Heart size={12} className={`${getHeartColor()} drop-shadow-sm ${removingHeart === pos ? 'animate-heart-removal' : ''}`} />
                             )}
                             {hasDana && !isHeadHere && (
                                 <DanaCoin size={12} />
@@ -261,13 +261,17 @@ const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana =
                 {/* Dana Section */}
                 {[...Array(DANA_SLOTS)].map((_, i) => {
                     const hasCoin = i < dana;
+                    const isRemoving = removingCoin === i;
+                    const isGaining = gainingDana && i === dana; // New coin being gained
                     return (
                         <div
                             key={`dana-${i}`}
                             className={`relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner`}
                         >
                             {hasCoin ? (
-                                <DanaCoin size={16} />
+                                <DanaCoin size={16} className={isRemoving ? 'animate-coin-removal' : ''} />
+                            ) : isGaining ? (
+                                <DanaCoin size={16} className="animate-dana-acquisition" />
                             ) : (
                                 <DanaCoin size={16} faded={true} />
                             )}
@@ -364,9 +368,9 @@ const HungryGhostGame = () => {
 
   // Players
   const [players, setPlayers] = useState([
-    { id: 0, name: 'Blue', color: 'bg-blue-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, dayCount: 1, lifeCount: 1, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false, agePosition: 0, placedDana: [] },
-    { id: 1, name: 'Green', color: 'bg-green-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, dayCount: 1, lifeCount: 1, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false, agePosition: 0, placedDana: [] },
-    { id: 2, name: 'Red', color: 'bg-red-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, dayCount: 1, lifeCount: 1, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false, agePosition: 0, placedDana: [] }
+    { id: 0, name: 'Blue', color: 'bg-blue-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, dayCount: 1, lifeCount: 1, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false, agePosition: 0, placedDana: [], removingHeart: null, removingCoin: null, gainingDana: false },
+    { id: 1, name: 'Green', color: 'bg-green-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, dayCount: 1, lifeCount: 1, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false, agePosition: 0, placedDana: [], removingHeart: null, removingCoin: null, gainingDana: false },
+    { id: 2, name: 'Red', color: 'bg-red-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, dayCount: 1, lifeCount: 1, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false, agePosition: 0, placedDana: [], removingHeart: null, removingCoin: null, gainingDana: false }
   ]);
 
   const currentPlayer = players[currentPlayerIdx];
@@ -589,11 +593,20 @@ const HungryGhostGame = () => {
     
     if (others.length > 0 && currentPlayer.location !== 'town') {
         const receiver = others[0];
-        updatePlayer(receiver.id, (prev) => ({ dana: prev.dana + 1 }));
+        updatePlayer(receiver.id, (prev) => ({
+            dana: prev.dana + 1,
+            gainingDana: true
+        }));
+
+        // Clear dana gain animation after delay
+        setTimeout(() => {
+            updatePlayer(receiver.id, { gainingDana: false });
+        }, 600);
+
         addLog(`${currentPlayer.name} gave Dana -1 to ${receiver.name} for Merit +1`, "player", currentPlayer.id);
         addLog(`${receiver.name} received Dana +1 from ${currentPlayer.name}'s good deed`, "player", receiver.id);
     } else {
-        addLog(`${currentPlayer.name} donated Dana -1 to temple box for Merit +1`, "player", currentPlayer.id);
+        addLog(`${currentPlayer.name} helped someone in town with Dana -1 for Merit +1`, "player", currentPlayer.id);
     }
 
     advancePhase();
@@ -616,7 +629,8 @@ const HungryGhostGame = () => {
                 return {
                     ...p,
                     merit: Math.max(MIN_MERIT, p.merit - totalGain),
-                    dana: p.dana + totalGain
+                    dana: p.dana + totalGain,
+                    gainingDana: totalGain > 0
                 };
             } else if (victimsWithDana.some(v => v.id === p.id)) {
                 return { ...p, dana: p.dana - 1 };
@@ -624,6 +638,13 @@ const HungryGhostGame = () => {
             return p;
         });
     });
+
+    // Clear dana gain animation after delay
+    if (victimsWithDana.length + townBonus > 0) {
+        setTimeout(() => {
+            updatePlayer(currentPlayer.id, { gainingDana: false });
+        }, 600);
+    }
 
     // Log the bad deed action
     const totalStolen = victimsWithDana.length + townBonus;
@@ -647,8 +668,17 @@ const HungryGhostGame = () => {
 
   const handleAlms = () => {
     if (phase !== 'morning') return;
-    
-    updatePlayer(currentPlayer.id, (prev) => ({ dana: prev.dana + 1 }));
+
+    updatePlayer(currentPlayer.id, (prev) => ({
+        dana: prev.dana + 1,
+        gainingDana: true
+    }));
+
+    // Clear dana gain animation after delay
+    setTimeout(() => {
+        updatePlayer(currentPlayer.id, { gainingDana: false });
+    }, 600);
+
     addLog(`${currentPlayer.name} collected Dana +1 from alms`, "player", currentPlayer.id);
     advancePhase();
   };
@@ -719,36 +749,62 @@ const HungryGhostGame = () => {
       if (newPosition <= 5 && currentPlayer.agePosition < newPosition) {
           // There was a heart at this position that we're knocking off
           heartCollected = 1;
-      }
 
-      updatePlayer(currentPlayer.id, (prev) => ({
-          agePosition: newPosition,
-          life: prev.life + heartCollected // Collect the heart we knocked off
-      }));
+          // Start heart removal animation
+          updatePlayer(currentPlayer.id, { removingHeart: newPosition });
+
+          // After animation delay, update position and collect heart
+          setTimeout(() => {
+              updatePlayer(currentPlayer.id, (prev) => ({
+                  agePosition: newPosition,
+                  life: prev.life + 1,
+                  removingHeart: null,
+                  gainingDana: true // Trigger dana gain animation for the heart collection
+              }));
+
+              // Clear dana gain animation after delay
+              setTimeout(() => {
+                  updatePlayer(currentPlayer.id, { gainingDana: false });
+              }, 600);
+
+              setShowEveningChoice(false);
+              advancePhase();
+          }, 500);
+      } else {
+          // No heart to collect, just move position
+          updatePlayer(currentPlayer.id, { agePosition: newPosition });
+          setShowEveningChoice(false);
+          advancePhase();
+      }
 
       if (heartCollected > 0) {
           addLog(`${currentPlayer.name} aged and collected a heart from position ${newPosition}`, "player", currentPlayer.id);
       } else {
           addLog(`${currentPlayer.name} aged through empty position ${newPosition}`, "player", currentPlayer.id);
       }
-
-      setShowEveningChoice(false);
-      advancePhase();
   };
 
   const payToSurvive = () => {
       const currentPos = currentPlayer.agePosition;
       const newPosition = currentPos + 1;
 
-      updatePlayer(currentPlayer.id, (prev) => ({
-          dana: prev.dana - 1,
-          agePosition: newPosition,
-          placedDana: [...(prev.placedDana || []), currentPos] // Place dana at current position before moving
-      }));
+      // Start coin removal animation from dana track (representing payment)
+      updatePlayer(currentPlayer.id, { removingCoin: currentPlayer.dana - 1 });
+
+      // After animation delay, complete the payment
+      setTimeout(() => {
+          updatePlayer(currentPlayer.id, (prev) => ({
+              dana: prev.dana - 1,
+              agePosition: newPosition,
+              placedDana: [...(prev.placedDana || []), currentPos], // Place dana at current position before moving
+              removingCoin: null
+          }));
+
+          setShowEveningChoice(false);
+          advancePhase();
+      }, 500);
 
       addLog(`${currentPlayer.name} paid Dana -1, placed it at position ${currentPos}, and aged to position ${newPosition}`, "player", currentPlayer.id);
-      setShowEveningChoice(false);
-      advancePhase();
   };
 
   const chooseToDie = () => {
@@ -854,7 +910,10 @@ const HungryGhostGame = () => {
           isMeditator: nextRole.isMeditator,
           merit: newMerit,
           agePosition: 0, // Reset aging track
-          placedDana: []  // Clear placed dana
+          placedDana: [],  // Clear placed dana
+          removingHeart: null, // Reset animations
+          removingCoin: null,
+          gainingDana: false
       });
 
       addLog(`${player.name} reincarnated in ${nextRealm} Realm!`, "player", player.id);
@@ -936,6 +995,9 @@ const HungryGhostGame = () => {
                               playerColor={player.color}
                               agePosition={player.agePosition || 0}
                               placedDana={player.placedDana || []}
+                              removingHeart={player.removingHeart}
+                              removingCoin={player.removingCoin}
+                              gainingDana={player.gainingDana}
                           />
                       </div>
                       <div className="flex-1">

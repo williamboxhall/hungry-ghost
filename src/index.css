@@ -82,6 +82,51 @@ body {
   }
 }
 
+@keyframes heartRemoval {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(10px) scale(0.9);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(30px) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes coinRemoval {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(10px) scale(0.9);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(30px) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes danaAcquisition {
+  0% {
+    transform: translateY(30px) scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(-5px) scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
 /* Animation utility classes */
 .animate-fall-in {
   animation: fallIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -101,4 +146,16 @@ body {
 
 .animate-shockwave-in {
   animation: shockwaveIn 0.8s ease-out;
+}
+
+.animate-heart-removal {
+  animation: heartRemoval 0.5s ease-in forwards;
+}
+
+.animate-coin-removal {
+  animation: coinRemoval 0.5s ease-in forwards;
+}
+
+.animate-dana-acquisition {
+  animation: danaAcquisition 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
