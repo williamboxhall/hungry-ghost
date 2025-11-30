@@ -256,12 +256,12 @@ export const detectAnimationsFromStateChange = (beforeState, afterState) => {
     }
 
     // Age position changes with heart collection
-    if (beforePlayer.agePosition !== afterPlayer.agePosition && afterPlayer.life > beforePlayer.life) {
-      animations.push(createRemoveHeartAnimation(beforePlayer.id, afterPlayer.agePosition));
+    if (beforePlayer.age !== afterPlayer.age && afterPlayer.life > beforePlayer.life) {
+      animations.push(createRemoveHeartAnimation(beforePlayer.id, afterPlayer.age));
     }
 
     // Dana placement on age track
-    if (beforePlayer.agePosition !== afterPlayer.agePosition && afterPlayer.dana < beforePlayer.dana) {
+    if (beforePlayer.age !== afterPlayer.age && afterPlayer.dana < beforePlayer.dana) {
       animations.push(createRemoveCoinAnimation(beforePlayer.id, beforePlayer.dana - 1));
     }
   });

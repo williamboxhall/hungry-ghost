@@ -105,26 +105,26 @@ export const MeritSlider = ({ merit, realm = 'human', playerColor = '' }) => {
     return "text-gray-400";
   };
 
-  const getHeartPositions = () => {
-    if (realm === 'heaven' && merit > 0) {
+  const getHeartPositions = (meritValue, realmType) => {
+    if (realmType === 'heaven' && meritValue > 0) {
       // Hearts fill gaps from 0 up to but NOT including merit marker
-      return Array.from({length: merit}, (_, i) => i);
-    } else if (realm === 'hell' && merit < 0) {
+      return Array.from({length: meritValue}, (_, i) => i);
+    } else if (realmType === 'hell' && meritValue < 0) {
       // Hearts fill gaps from 0 down to but NOT including merit marker
-      return Array.from({length: Math.abs(merit)}, (_, i) => -i);
+      return Array.from({length: Math.abs(meritValue)}, (_, i) => -i);
     }
     return [];
   };
 
-  const getHeartColor = () => {
-    if (playerColor.includes('blue')) return "text-blue-500 fill-blue-500";
-    if (playerColor.includes('green')) return "text-green-500 fill-green-500";
-    if (playerColor.includes('red')) return "text-red-500 fill-red-500";
+  const getHeartColor = (color) => {
+    if (color.includes('blue')) return "text-blue-500 fill-blue-500";
+    if (color.includes('green')) return "text-green-500 fill-green-500";
+    if (color.includes('red')) return "text-red-500 fill-red-500";
     return "text-red-500 fill-red-500"; // Default red
   };
 
   const isInSpiritualRealm = realm === 'heaven' || realm === 'hell';
-  const heartPositions = getHeartPositions();
+  const heartPositions = getHeartPositions(merit, realm);
 
   return (
     <div className="w-fit">
@@ -162,7 +162,7 @@ export const MeritSlider = ({ merit, realm = 'human', playerColor = '' }) => {
                 {/* Hearts for spiritual realms */}
                 {isInSpiritualRealm && heartPositions.includes(step) && (
                     <div className="absolute inset-0 flex items-center justify-center z-20">
-                        <Heart size={14} className={`${getHeartColor()} drop-shadow-sm animate-fall-in`} />
+                        <Heart size={14} className={`${getHeartColor(playerColor)} drop-shadow-sm animate-fall-in`} />
                     </div>
                 )}
 
@@ -179,7 +179,25 @@ export const MeritSlider = ({ merit, realm = 'human', playerColor = '' }) => {
 };
 
 // Pure Life & Dana Track - renders based only on player state
-export const LifeTrack = ({ player, animations = {} }) => {
+export const LifeTrack = ({ player, previousPlayer = null }) => {
+    // Calculate what changed in player state to determine animations
+    const calculatePlayerDiff = (currentPlayer, previousPlayer) => {
+        if (!previousPlayer) return { removingHeart: null, removingCoin: null };
+
+        const diff = { removingHeart: null, removingCoin: null };
+
+        // Check if age moved forward (heart collected)
+        if (currentPlayer.age > previousPlayer.age) {
+            diff.removingHeart = currentPlayer.age; // Position that just lost its heart
+        }
+
+        // Check if dana decreased (coin spent)
+        if (currentPlayer.dana < previousPlayer.dana) {
+            diff.removingCoin = currentPlayer.dana; // Index of coin that was just spent
+        }
+
+        return diff;
+    };
     const LIFE_SLOTS = 5;
     const DANA_SLOTS = 10;
 
@@ -190,63 +208,84 @@ export const LifeTrack = ({ player, animations = {} }) => {
         return "text-red-500 fill-red-500";
     };
 
-    // Animation state accessors
-    const removingHeart = animations[`${player.id}_removingHeart`];
-    const removingCoin = animations[`${player.id}_removingCoin`];
 
-    // Pure rendering logic - all state explicitly passed as parameters
-    const renderSlot = (position, playerState, animationState) => {
-        const isHeadPosition = playerState.agePosition === position;
-        const hasDanaPlaced = playerState.placedDana && playerState.placedDana.includes(position);
+    const calculateTrackState = (age, dana) => {
+        const trackState = new Array(16);
 
-        if (position === 0) {
-            // Aging position (0)
-            return (
-                <div key="aging-0" className="relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner">
-                    {isHeadPosition ? (
-                        <span className="text-sm">👤</span>
-                    ) : hasDanaPlaced ? (
-                        <DanaCoin size={12} />
-                    ) : (
-                        <HeadOutline size={12} className="text-stone-400 opacity-50" />
-                    )}
-                </div>
-            );
-        } else if (position >= 1 && position <= LIFE_SLOTS) {
-            // Life positions (1-5): show hearts or collected state
-            const heartCollected = playerState.agePosition >= position; // Head has passed this position
+        // Fill positions 0-15 based on age and dana
+        for (let position = 0; position <= 15; position++) {
+            if (position === age) {
+                // Head is at this position
+                trackState[position] = 'head';
+            } else if (position < age) {
+                // Positions to the left of head
+                if (position === 0) {
+                    // First socket
+                    trackState[position] = 'head_socket';
+                } else if (position >= 1 && position <= 5) {
+                    // Life positions to the left of head (1-5): empty heart sockets
+                    trackState[position] = 'heart_socket';
+                } else {
+                    // Dana positions to the left of head (6-15): empty coin sockets
+                    trackState[position] = 'coin_socket';
+                }
+            } else if (position > age) {
+                // Positions to the right of head
+                if (position >= 1 && position <= 5) {
+                    // Life positions to the right of head (1-5): empty heart sockets
+                    trackState[position] = 'heart';
+                } else {
+                    // determine if coin or coin_socket based on amount of dana
+                    const danaStart = Math.max(age, 6);
+                    const slotIndex = position - danaStart;
 
-            return (
-                <div key={`life-${position}`} className="relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner">
-                    {isHeadPosition && (
-                        <span className="absolute z-20 text-sm">👤</span>
-                    )}
-                    {!heartCollected && !isHeadPosition && !hasDanaPlaced && (
-                        <Heart size={12} className={`${getHeartColor(playerState.color)} drop-shadow-sm ${animationState.removingHeart === position ? 'animate-heart-removal' : ''}`} />
-                    )}
-                    {hasDanaPlaced && !isHeadPosition && (
-                        <DanaCoin size={12} />
-                    )}
-                    {heartCollected && !hasDanaPlaced && !isHeadPosition && (
-                        <Heart size={12} className="text-stone-400 opacity-50" strokeWidth={1.5} />
-                    )}
-                </div>
-            );
-        } else {
-            // Dana positions (6-15): show filled/empty based on dana count
-            const danaIndex = position - LIFE_SLOTS - 1; // Convert to 0-9 index
-            const hasCoin = danaIndex < playerState.dana;
-
-            return (
-                <div key={`dana-${danaIndex}`} className="relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner">
-                    {hasCoin ? (
-                        <DanaCoin size={16} className={animationState.removingCoin === danaIndex ? 'animate-coin-removal' : ''} />
-                    ) : (
-                        <DanaCoin size={16} faded={true} />
-                    )}
-                </div>
-            );
+                    if (slotIndex >= 0 && slotIndex < dana) {
+                        // Dana coin is placed here
+                        trackState[position] = 'coin';
+                    } else {
+                        // Empty coin socket
+                        trackState[position] = 'coin_socket';
+                    }
+                }
+            }
         }
+
+        return trackState;
+    };
+
+    // Calculate track states for current and previous player
+    const currentTrackState = calculateTrackState(player.age, player.dana);
+    const previousTrackState = previousPlayer ? calculateTrackState(previousPlayer.age, previousPlayer.dana) : null;
+
+    // Pure rendering logic - render each slot based on pre-calculated state only
+    const renderSlot = (currentSlotState, previousSlotState) => {
+        // Check if animation needed (slot changed from previous state)
+        const isAnimating = previousSlotState && currentSlotState !== previousSlotState;
+        const isHeartAnimation = previousSlotState === 'heart' && currentSlotState === 'head_socket';
+        const isCoinAnimation = previousSlotState === 'coin' && currentSlotState === 'coin_socket';
+
+        return (
+            <div className="relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner">
+                {currentSlotState === 'head' && (
+                    <span className="absolute z-20 text-sm">👤</span>
+                )}
+                {currentSlotState === 'head_socket' && (
+                    <HeadOutline size={12} className="text-stone-400 opacity-50" />
+                )}
+                {currentSlotState === 'heart' && (
+                    <Heart size={12} className={`${getHeartColor(player.color)} drop-shadow-sm ${isHeartAnimation ? 'animate-heart-removal' : ''}`} />
+                )}
+                {currentSlotState === 'heart_socket' && (
+                    <Heart size={12} className="text-stone-400 opacity-50" strokeWidth={1.5} />
+                )}
+                {currentSlotState === 'coin' && (
+                    <DanaCoin size={16} className={isCoinAnimation ? 'animate-coin-removal' : ''} />
+                )}
+                {currentSlotState === 'coin_socket' && (
+                    <DanaCoin size={16} faded={true} />
+                )}
+            </div>
+        );
     };
 
     return (
@@ -273,8 +312,12 @@ export const LifeTrack = ({ player, animations = {} }) => {
             </div>
 
             <div className="flex gap-0.5 items-center bg-stone-200/50 p-0.5 rounded-lg border border-stone-300/50 w-fit">
-                {/* Render all 16 slots (0 + 5 life + 10 dana) - state passed explicitly */}
-                {Array.from({ length: 16 }, (_, i) => renderSlot(i, player, { removingHeart, removingCoin }))}
+                {/* Render all 16 slots using pre-calculated state arrays */}
+                {currentTrackState.map((currentSlotState, i) => (
+                    <div key={`slot-${i}`}>
+                        {renderSlot(currentSlotState, previousTrackState?.[i])}
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -359,7 +402,7 @@ export const ActionButton = ({ label, icon, disabled, onClick, active, mandatory
 );
 
 // Player Card Renderer
-export const PlayerCard = ({ player, isActive, animations = {} }) => {
+export const PlayerCard = ({ player, isActive, previousPlayer = null }) => {
     let bgClass = "bg-gray-50", borderClass = "border-gray-200";
     if (player.color.includes('blue')) { bgClass = "bg-blue-50"; borderClass = "border-blue-200"; }
     if (player.color.includes('green')) { bgClass = "bg-green-50"; borderClass = "border-green-200"; }
@@ -388,7 +431,7 @@ export const PlayerCard = ({ player, isActive, animations = {} }) => {
                 {/* Life Section - Greyed out in spiritual realms */}
                 <div className={`flex items-start gap-1 mt-0.5 ${player.realm !== 'human' ? 'opacity-30 pointer-events-none' : ''}`}>
                     <div className="flex-1">
-                        <LifeTrack player={player} animations={animations} />
+                        <LifeTrack player={player} previousPlayer={previousPlayer} />
                     </div>
                     <div className="w-32">
                         <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center justify-center gap-1">

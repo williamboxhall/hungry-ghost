@@ -95,7 +95,7 @@ export const canTakeAction = (player, action, gameState) => {
 
     case ACTION_TYPES.AGE:
       if (phase !== 'evening') return { allowed: false, reason: 'Can only age during evening' };
-      if (player.agePosition >= 5) return { allowed: false, reason: 'Already at maximum age' };
+      if (player.age >= 5) return { allowed: false, reason: 'Already at maximum age' };
       return { allowed: true };
 
     case ACTION_TYPES.EXTEND_LIFE:
@@ -116,10 +116,10 @@ export const canTakeAction = (player, action, gameState) => {
 
 // Pure action effect functions
 export const createAgeAction = (player) => {
-  const newPosition = player.agePosition + 1;
+  const newPosition = player.age + 1;
 
   // Check if there's a heart to collect
-  if (newPosition <= 5 && player.agePosition < newPosition) {
+  if (newPosition <= 5 && player.age < newPosition) {
     return {
       player: {
         ...movePlayerAgePosition(player, newPosition),
@@ -144,7 +144,7 @@ export const createAgeAction = (player) => {
 };
 
 export const createExtendAction = (player) => {
-  const currentPos = player.agePosition;
+  const currentPos = player.age;
   const newPosition = currentPos + 1;
 
   return {
@@ -383,7 +383,7 @@ export const createActionRecord = (player, action, result, timestamp = Date.now(
       insight: player.insight,
       life: player.life,
       location: player.location,
-      agePosition: player.agePosition
+      age: player.age
     },
     afterState: result.player ? {
       merit: result.player.merit,
@@ -392,7 +392,7 @@ export const createActionRecord = (player, action, result, timestamp = Date.now(
       insight: result.player.insight,
       life: result.player.life,
       location: result.player.location,
-      agePosition: result.player.agePosition
+      age: result.player.age
     } : null,
     effects: result.effects || [],
     timestamp

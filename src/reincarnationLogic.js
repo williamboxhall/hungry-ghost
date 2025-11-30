@@ -54,7 +54,7 @@ export const shouldReincarnateFromSpiritualRealm = (player) => {
 // Check death conditions for human realm
 export const checkHumanRealmDeath = (player) => {
   // Human players die when they reach age limit and choose to die or can't extend
-  if (player.agePosition >= 5) {
+  if (player.age >= 5) {
     return {
       canDie: true,
       mustDie: player.dana === 0, // Must die if no dana to extend

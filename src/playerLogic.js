@@ -26,8 +26,7 @@ export const createInitialPlayer = (id, name, color) => ({
   isMeditator: false,
   isTeacher: false,
   isGreedy: false,
-  agePosition: 0,
-  placedDana: []
+  age: 0
 });
 
 // Player state queries
@@ -46,10 +45,10 @@ export const getPlayerMeritDirection = (player) => {
   return 'neutral';
 };
 
-export const isPlayerAtAgeLimit = (player) => player.agePosition >= 5;
+export const isPlayerAtAgeLimit = (player) => player.age >= 5;
 
 export const canPlayerExtendLife = (player) =>
-  player.agePosition >= 5 && player.dana > 0;
+  player.age >= 5 && player.dana > 0;
 
 // Player state transformations
 export const updatePlayerRealm = (player, newRealm) => ({
@@ -88,20 +87,14 @@ export const incrementPlayerLife = (player) => ({
 });
 
 // Age track operations
-export const movePlayerAgePosition = (player, newPosition) => ({
+export const movePlayerAge = (player, newAge) => ({
   ...player,
-  agePosition: newPosition
-});
-
-export const addDanaToAgeTrack = (player, position) => ({
-  ...player,
-  placedDana: [...(player.placedDana || []), position]
+  age: newAge
 });
 
 export const clearPlayerAgeTrack = (player) => ({
   ...player,
-  agePosition: -1,
-  placedDana: []
+  age: -1
 });
 
 // Merit operations (with bounds checking)
@@ -188,8 +181,7 @@ export const createPlayerReincarnation = (player, realmData) => {
     isGreedy: nextRole.isGreedy || false,
     isMeditator: nextRole.isMeditator || false,
     merit: newMerit,
-    agePosition: -1, // Start before position 0
-    placedDana: []
+    age: -1 // Start before position 0
   };
 };
 
@@ -207,8 +199,7 @@ export const createBodhisattvaReincarnation = (player) => ({
   isGreedy: false,
   isMeditator: true,
   merit: player.merit, // Keep current Merit
-  agePosition: -1,
-  placedDana: []
+  age: -1
 });
 
 // Player collection utilities

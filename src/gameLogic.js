@@ -33,8 +33,7 @@ export const createInitialPlayer = (id, name, color) => ({
   isMeditator: false,
   isTeacher: false,
   isGreedy: false,
-  agePosition: 0,
-  placedDana: []
+  age: 0
 });
 
 // Helper functions
@@ -50,32 +49,31 @@ export const updatePlayerInArray = (players, playerId, updates) =>
 // Pure Action Functions - return new state without side effects
 
 export const createAgeAction = (player) => {
-  const newPosition = player.agePosition + 1;
+  const newPosition = player.age + 1;
 
   // Check if there's a heart to collect
-  if (newPosition <= 5 && player.agePosition < newPosition) {
+  if (newPosition <= 5 && player.age < newPosition) {
     return {
       ...player,
-      agePosition: newPosition,
+      age: newPosition,
       life: player.life + 1
     };
   } else {
     return {
       ...player,
-      agePosition: newPosition
+      age: newPosition
     };
   }
 };
 
 export const createExtendAction = (player) => {
-  const currentPos = player.agePosition;
+  const currentPos = player.age;
   const newPosition = currentPos + 1;
 
   return {
     ...player,
     dana: player.dana - 1,
-    agePosition: newPosition,
-    placedDana: [...(player.placedDana || []), currentPos]
+    age: newPosition
   };
 };
 
@@ -208,8 +206,7 @@ export const executeReincarnation = (player, nextRealm, nextRole, startingLife) 
     isGreedy: nextRole.isGreedy,
     isMeditator: nextRole.isMeditator,
     merit: newMerit,
-    agePosition: -1, // Start before position 0 so there's a heart to knock off
-    placedDana: []
+    age: -1 // Start before position 0 so there's a heart to knock off
   };
 };
 
@@ -228,8 +225,7 @@ export const createBodhisattvaReincarnation = (player) => {
     isGreedy: false,
     isMeditator: true,
     merit: player.merit, // Keep current Merit instead of resetting to 0
-    agePosition: -1,
-    placedDana: []
+    age: -1
   };
 };
 
@@ -301,15 +297,15 @@ export const canTakeAction = (player, action, gameState) => {
     case 'alms':
       return phase === 'morning' && !isMoving && player.isMonk && player.location === 'town';
     case 'age':
-      return phase === 'evening' && player.agePosition < 5;
+      return phase === 'evening' && player.age < 5;
     case 'extend':
-      return phase === 'evening' && player.agePosition >= 5 && player.dana > 0;
+      return phase === 'evening' && player.age >= 5 && player.dana > 0;
     case 'die':
-      return phase === 'evening' && player.agePosition >= 5;
+      return phase === 'evening' && player.age >= 5;
     case 'nirvana':
-      return phase === 'evening' && player.agePosition >= 5 && player.insight >= WINNING_INSIGHT;
+      return phase === 'evening' && player.age >= 5 && player.insight >= WINNING_INSIGHT;
     case 'bodhisattva':
-      return phase === 'evening' && player.agePosition >= 5 && player.insight >= WINNING_INSIGHT;
+      return phase === 'evening' && player.age >= 5 && player.insight >= WINNING_INSIGHT;
     default:
       return false;
   }
@@ -572,7 +568,7 @@ export class GameController {
   ageNormally() {
     const currentPlayer = this.getCurrentPlayer();
     const newPlayer = createAgeAction(currentPlayer);
-    const newPosition = newPlayer.agePosition;
+    const newPosition = newPlayer.age;
     const heartCollected = newPlayer.life > currentPlayer.life;
 
     const animations = [];
@@ -603,8 +599,8 @@ export class GameController {
   payToSurvive() {
     const currentPlayer = this.getCurrentPlayer();
     const newPlayer = createExtendAction(currentPlayer);
-    const currentPos = currentPlayer.agePosition;
-    const newPosition = newPlayer.agePosition;
+    const currentPos = currentPlayer.age;
+    const newPosition = newPlayer.age;
 
     const animations = [{
       type: 'removeCoin',

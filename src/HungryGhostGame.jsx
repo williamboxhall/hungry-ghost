@@ -23,12 +23,14 @@ const HungryGhostGame = () => {
   // Initialize game controller
   const [gameController] = useState(() => new GameController());
   const [gameState, setGameState] = useState(gameController.getState());
+  const [previousGameState, setPreviousGameState] = useState(null);
   const [animations, setAnimations] = useState({});
 
   const logContainerRef = useRef(null);
 
   // Helper to update React state from game controller
   const syncGameState = () => {
+    setPreviousGameState(gameState);
     setGameState(gameController.getState());
   };
 
@@ -163,20 +165,22 @@ const HungryGhostGame = () => {
 
   // Derived state from game controller
   const currentPlayer = gameController.getCurrentPlayer();
-  const getPlayersAt = (locId) => gameState.players.filter(p => p.location === locId && p.realm === 'human');
-  const othersHere = getPlayersAt(currentPlayer.location).filter(p => p.id !== currentPlayer.id);
+  const getPlayersAt = (locId, players) => players.filter(p => p.location === locId && p.realm === 'human');
+  const othersHere = getPlayersAt(currentPlayer.location, gameState.players).filter(p => p.id !== currentPlayer.id);
   const canInteract = currentPlayer.location === 'town' || othersHere.length > 0;
   const mustTakeRobes = currentPlayer.realm === 'human' && currentPlayer.location === 'temple' && !currentPlayer.isMonk && !gameState.showEveningChoice;
 
-  const renderLocation = (loc) => {
-    const playersHere = getPlayersAt(loc.id);
-    const isCurrentLoc = currentPlayer.location === loc.id && currentPlayer.realm === 'human';
-    const currentLocIdx = LOCATIONS.findIndex(l => l.id === currentPlayer.location);
-    const thisLocIdx = LOCATIONS.findIndex(l => l.id === loc.id);
+  const renderLocation = (loc, gameStateData, currentPlayerData, locations) => {
+    const getPlayersAtLocation = (locId) => gameStateData.players.filter(p => p.location === locId && p.realm === 'human');
+
+    const playersHere = getPlayersAtLocation(loc.id);
+    const isCurrentLoc = currentPlayerData.location === loc.id && currentPlayerData.realm === 'human';
+    const currentLocIdx = locations.findIndex(l => l.id === currentPlayerData.location);
+    const thisLocIdx = locations.findIndex(l => l.id === loc.id);
     const isAdjacent = Math.abs(currentLocIdx - thisLocIdx) === 1;
-    const isMoveTarget = gameState.isMoving && isAdjacent;
-    const isDimmed = gameState.isMoving && !isAdjacent && !isCurrentLoc;
-    const isNormal = !gameState.isMoving && !isCurrentLoc && !isDimmed;
+    const isMoveTarget = gameStateData.isMoving && isAdjacent;
+    const isDimmed = gameStateData.isMoving && !isAdjacent && !isCurrentLoc;
+    const isNormal = !gameStateData.isMoving && !isCurrentLoc && !isDimmed;
 
     return (
       <LocationCard
@@ -196,14 +200,17 @@ const HungryGhostGame = () => {
     <div className="min-h-screen bg-stone-100 text-slate-800 font-sans p-4 max-w-7xl mx-auto flex flex-col h-screen overflow-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
         <div className="lg:col-span-5 flex flex-col gap-2 overflow-y-auto px-2 py-2 pb-8 h-full">
-          {gameState.players.map(p => (
-            <PlayerCard
-              key={p.id}
-              player={p}
-              isActive={p.id === currentPlayer.id}
-              animations={animations}
-            />
-          ))}
+          {gameState.players.map(p => {
+            const previousPlayer = previousGameState?.players.find(prev => prev.id === p.id) || null;
+            return (
+              <PlayerCard
+                key={p.id}
+                player={p}
+                isActive={p.id === currentPlayer.id}
+                previousPlayer={previousPlayer}
+              />
+            );
+          })}
         </div>
 
         <div className="lg:col-span-7 flex flex-col gap-4 h-full">
@@ -212,7 +219,7 @@ const HungryGhostGame = () => {
               <div className="flex justify-between items-center min-w-[500px]">
                 {LOCATIONS.map((loc, i) => (
                   <React.Fragment key={loc.id}>
-                    {renderLocation(loc)}
+                    {renderLocation(loc, gameState, currentPlayer, LOCATIONS)}
                     {i < LOCATIONS.length - 1 && <div className="h-2 bg-stone-300 flex-1 mx-2 rounded-full border border-stone-400"></div>}
                   </React.Fragment>
                 ))}
@@ -278,22 +285,22 @@ const HungryGhostGame = () => {
                     <ActionButton
                       label="Age"
                       onClick={() => handleAction('ageNormally')}
-                      disabled={currentPlayer.agePosition >= 5}
+                      disabled={currentPlayer.age >= 5}
                       icon={<><span className="text-sm">👤</span><ArrowRight size={10}/><Heart size={12} className="text-red-500 fill-red-500"/><ArrowDown size={8}/></>}
                     />
                     <ActionButton
                       label="Extend"
                       onClick={() => handleAction('payToSurvive')}
-                      disabled={currentPlayer.agePosition < 5 || currentPlayer.dana <= 0}
+                      disabled={currentPlayer.age < 5 || currentPlayer.dana <= 0}
                       icon={<><span className="text-sm">👤</span><ArrowRight size={10}/><DanaCoin size={12}/><ArrowDown size={8}/></>}
                     />
                     <ActionButton
                       label="Die"
                       onClick={() => handleAction('chooseToDie')}
-                      disabled={currentPlayer.agePosition < 5}
+                      disabled={currentPlayer.age < 5}
                       icon={<><span className="text-sm">💀</span><span className="text-sm">🔄</span></>}
                     />
-                    {currentPlayer.agePosition >= 5 && currentPlayer.insight >= 7 && (
+                    {currentPlayer.age >= 5 && currentPlayer.insight >= 7 && (
                       <>
                         <ActionButton
                           label="Nirvana"
