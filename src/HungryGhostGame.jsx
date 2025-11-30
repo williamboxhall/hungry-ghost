@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Cloud, Heart, Coins, Zap, Skull, Crown, Ghost, BookOpen, AlertCircle, ArrowRight, User, Sun, Sparkles, ArrowUp, ArrowDown, Move, Moon, SunMedium, Sunset } from 'lucide-react';
+import { Cloud, Heart, Coins, Zap, Skull, Crown, Ghost, BookOpen, AlertCircle, ArrowRight, User, Sun, Sparkles, ArrowUp, ArrowDown, Move, Moon, SunMedium, Sunset, RotateCcw, Trophy, FastForward } from 'lucide-react';
 
 const LOCATIONS = [
   { id: 'cave', name: 'Cave', capacity: 1, type: 'meditation' },
@@ -66,7 +66,7 @@ const Meeple = ({ player, size = "normal" }) => {
 };
 
 // Merit Slider Component
-const MeritSlider = ({ merit }) => {
+const MeritSlider = ({ merit, realm = 'human', playerColor = '' }) => {
   const steps = Array.from({ length: 11 }, (_, i) => i - 5);
 
   const getMeritLabelColor = (value) => {
@@ -83,6 +83,27 @@ const MeritSlider = ({ merit }) => {
     if (value === 5) return "text-blue-700";
     return "text-gray-400";
   };
+
+  const getHeartPositions = () => {
+    if (realm === 'heaven' && merit > 0) {
+      // Hearts fill gaps from +1 up to but NOT including merit marker
+      return Array.from({length: merit - 1}, (_, i) => i + 1);
+    } else if (realm === 'hell' && merit < 0) {
+      // Hearts fill gaps from -1 down to but NOT including merit marker
+      return Array.from({length: Math.abs(merit) - 1}, (_, i) => -(i + 1));
+    }
+    return [];
+  };
+
+  const getHeartColor = () => {
+    if (playerColor.includes('blue')) return "text-blue-500 fill-blue-500";
+    if (playerColor.includes('green')) return "text-green-500 fill-green-500";
+    if (playerColor.includes('red')) return "text-red-500 fill-red-500";
+    return "text-red-500 fill-red-500"; // Default red
+  };
+
+  const isInSpiritualRealm = realm === 'heaven' || realm === 'hell';
+  const heartPositions = getHeartPositions();
 
   return (
     <div className="w-fit">
@@ -107,7 +128,14 @@ const MeritSlider = ({ merit }) => {
                 `}
             >
                 {step === 0 && <div className="w-1.5 h-1.5 bg-stone-400 rounded-full"></div>}
-                
+
+                {/* Hearts for spiritual realms */}
+                {isInSpiritualRealm && heartPositions.includes(step) && (
+                    <div className="absolute inset-0 flex items-center justify-center z-20">
+                        <Heart size={14} className={`${getHeartColor()} drop-shadow-sm animate-fall-in`} />
+                    </div>
+                )}
+
                 {merit === step && (
                     <div className="absolute inset-0 flex items-center justify-center z-10">
                         <div className="w-5 h-5 bg-white border-2 border-stone-800 rounded-full flex items-center justify-center text-[10px] shadow-md transform scale-110">
@@ -123,10 +151,17 @@ const MeritSlider = ({ merit }) => {
 };
 
 // Life & Dana Track
-const LifeTrack = ({ life, dana }) => {
+const LifeTrack = ({ life, dana, playerColor = '' }) => {
     const TOTAL_SLOTS = 15;
     const LIFE_SLOTS = 5;
     const DANA_SLOTS = 10;
+
+    const getHeartColor = () => {
+        if (playerColor.includes('blue')) return "text-blue-500 fill-blue-500";
+        if (playerColor.includes('green')) return "text-green-500 fill-green-500";
+        if (playerColor.includes('red')) return "text-red-500 fill-red-500";
+        return "text-red-500 fill-red-500"; // Default red
+    };
 
     return (
         <div className="w-fit">
@@ -179,7 +214,7 @@ const LifeTrack = ({ life, dana }) => {
                             className={`relative w-5 h-5 rounded flex items-center justify-center bg-white border border-stone-200`}
                         >
                             {!isEmpty ? (
-                                <Heart size={12} className="text-red-500 fill-red-500 drop-shadow-sm" />
+                                <Heart size={12} className={`${getHeartColor()} drop-shadow-sm`} />
                             ) : (
                                 <Heart size={12} className="text-stone-300 opacity-50" strokeWidth={1.5} />
                             )}
@@ -286,7 +321,11 @@ const HungryGhostGame = () => {
   const [logs, setLogs] = useState([{ message: "Game started. Welcome to the Human Realm.", type: "neutral" }]);
   const [winner, setWinner] = useState(null);
   const [showEveningChoice, setShowEveningChoice] = useState(false);
+  const [showReincarnationChoice, setShowReincarnationChoice] = useState(false);
+  const [pendingReincarnation, setPendingReincarnation] = useState(null);
   const [isMoving, setIsMoving] = useState(false);
+  const [pendingInteractions, setPendingInteractions] = useState([]);
+  const [showInteractionChoice, setShowInteractionChoice] = useState(false);
   
   const logContainerRef = useRef(null);
 
@@ -543,7 +582,7 @@ const HungryGhostGame = () => {
             if (p.id === me.id) {
                 return {
                     ...p,
-                    merit: Math.max(MIN_MERIT, p.merit - 1),
+                    merit: Math.max(MIN_MERIT, p.merit - totalGain),
                     dana: p.dana + totalGain
                 };
             } else if (victimsWithDana.some(v => v.id === p.id)) {
@@ -560,14 +599,14 @@ const HungryGhostGame = () => {
         if (townBonus > 0) sources.push("Town");
         victimsWithDana.forEach(victim => sources.push(victim.name));
 
-        addLog(`${currentPlayer.name} committed a bad deed and stole Dana +${totalStolen} (${sources.join(", ")}) for Merit -1`, "player", currentPlayer.id);
+        addLog(`${currentPlayer.name} committed a bad deed and stole Dana +${totalStolen} (${sources.join(", ")}) for Merit -${totalStolen}`, "player", currentPlayer.id);
 
         // Log individual victim losses
         victimsWithDana.forEach(victim => {
             addLog(`${victim.name} lost Dana -1 from ${currentPlayer.name}'s theft`, "player", victim.id);
         });
     } else {
-        addLog(`${currentPlayer.name} committed a bad deed but found nothing to steal for Merit -1`, "player", currentPlayer.id);
+        addLog(`${currentPlayer.name} committed a bad deed but found nothing to steal for Merit -0`, "player", currentPlayer.id);
     }
 
     advancePhase();
@@ -584,7 +623,7 @@ const HungryGhostGame = () => {
   const handleBecomeMonk = () => {
       const danaLost = currentPlayer.dana;
       updatePlayer(currentPlayer.id, { isMonk: true, dana: 0 });
-      addLog(`${currentPlayer.name} took robes and became a Monk (lost all Dana -${danaLost})`, "player", currentPlayer.id);
+      addLog(`${currentPlayer.name} ordained as a Monk (lost all Dana -${danaLost})`, "player", currentPlayer.id);
   };
 
   // --- Evening Logic ---
@@ -610,10 +649,10 @@ const HungryGhostGame = () => {
                   addLog(`${p.name} hellish suffering: Delusion +1, Merit +1`, "neutral", p.id);
               }
 
-              if (p.realm === 'human' && newLife <= 0) {
-                 if (newDana > 0) {
-                     setShowEveningChoice(true);
-                 }
+              if (p.realm === 'human') {
+                  // Always show evening choice for humans - don't modify life yet
+                  setShowEveningChoice(true);
+                  return p; // Return unchanged for humans - they will choose their ritual
               } 
               return { ...p, life: newLife, dana: newDana, delusion: newDelusion, merit: newMerit };
           });
@@ -632,33 +671,37 @@ const HungryGhostGame = () => {
       }
   }, [phase, showEveningChoice, players]);
 
+  const ageNormally = () => {
+      updatePlayer(currentPlayer.id, (prev) => ({
+          life: prev.life - 1
+      }));
+      addLog(`${currentPlayer.name} aged naturally and lost a heart`, "player", currentPlayer.id);
+      setShowEveningChoice(false);
+      advancePhase();
+  };
+
   const payToSurvive = () => {
       updatePlayer(currentPlayer.id, (prev) => ({
           dana: prev.dana - 1
       }));
       addLog(`${currentPlayer.name} paid Dana -1 to avoid death this evening`, "player", currentPlayer.id);
       setShowEveningChoice(false);
+      advancePhase();
   };
 
   const chooseToDie = () => {
       setShowEveningChoice(false);
-      handleDeath(currentPlayer);
+      // Prepare reincarnation data but don't execute yet
+      const reincarnationData = prepareReincarnation(currentPlayer);
+      setPendingReincarnation(reincarnationData);
+      setShowReincarnationChoice(true);
   };
 
-  const handlePassTime = () => {
-      handleEveningArrival();
-      advancePhase();
-  };
-
-  const handleDeath = (player) => {
+  const prepareReincarnation = (player) => {
       if (player.insight >= WINNING_INSIGHT) {
-          setWinner(player);
-          addLog(`*** ${player.name} HAS AWAKENED! GAME OVER ***`, "neutral", player.id);
-          return;
+          return { type: 'victory', player };
       }
 
-      addLog(`${player.name} has died.`, "player", player.id);
-      
       let nextRealm = 'human';
       let nextRole = { isTeacher: false, isGreedy: false, isMonk: false, isMeditator: false };
       let startingLife = INITIAL_LIFE;
@@ -669,17 +712,40 @@ const HungryGhostGame = () => {
           else nextRealm = 'human';
       } else {
           nextRealm = 'human';
-          if (player.realm === 'heaven') nextRole.isTeacher = true; 
-          if (player.realm === 'hell') nextRole.isGreedy = true;   
+          if (player.realm === 'heaven') nextRole.isTeacher = true;
+          else if (player.realm === 'hell') nextRole.isGreedy = true;
       }
 
-      if (nextRole.isTeacher) nextRole.isMeditator = true; 
+      if (nextRealm === 'heaven') startingLife = player.merit;
+      else if (nextRealm === 'hell') startingLife = Math.abs(player.merit);
 
-      let newMerit = player.merit; 
-      if (player.realm !== 'human') newMerit = 0; 
+      return { type: 'reincarnate', player, nextRealm, nextRole, startingLife };
+  };
 
-      if (nextRealm === 'heaven') startingLife = Math.abs(player.merit);
-      if (nextRealm === 'hell') startingLife = Math.abs(player.merit);
+  const confirmReincarnation = () => {
+      if (pendingReincarnation.type === 'victory') {
+          setWinner(pendingReincarnation.player);
+          addLog(`*** ${pendingReincarnation.player.name} HAS ACHIEVED NIRVANA! GAME OVER ***`, "neutral", pendingReincarnation.player.id);
+      } else {
+          executeReincarnation(pendingReincarnation);
+          advancePhase();
+      }
+      setShowReincarnationChoice(false);
+      setPendingReincarnation(null);
+  };
+
+  const handlePassTime = () => {
+      handleEveningArrival();
+      advancePhase();
+  };
+
+  const executeReincarnation = ({ player, nextRealm, nextRole, startingLife }) => {
+      addLog(`${player.name} has died.`, "player", player.id);
+
+      if (nextRole.isTeacher) nextRole.isMeditator = true;
+
+      let newMerit = player.merit;
+      if (player.realm !== 'human') newMerit = 0;
 
       updatePlayer(player.id, {
           realm: nextRealm,
@@ -722,21 +788,19 @@ const HungryGhostGame = () => {
       return <Moon size={14} className="text-indigo-600"/>;
   };
 
-  const ActionButton = ({ label, effects, icon, disabled, onClick, active }) => (
-      <button 
+  const ActionButton = ({ label, icon, disabled, onClick, active, mandatory = false }) => (
+      <button
         onClick={onClick}
         disabled={disabled}
         className={`
-            w-full flex items-center justify-between px-3 py-2.5 rounded border shadow-sm transition-all
+            w-full flex items-center justify-between px-3 py-2.5 rounded border shadow-sm transition-all text-xs font-bold
             ${active ? 'ring-2 ring-offset-1 ring-blue-400 bg-blue-50 border-blue-300' : ''}
-            ${disabled ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'}
+            ${mandatory ? 'bg-yellow-50 text-yellow-800 border-yellow-300 hover:bg-yellow-100' : ''}
+            ${disabled ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : !mandatory ? 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400' : ''}
         `}
       >
-         <span className="text-[11px] font-bold uppercase">{label}</span>
-         <div className="flex items-center gap-1 opacity-80">
-            {effects}
-            {icon && <span className="ml-1">{icon}</span>}
-         </div>
+         <span className="uppercase">{label}</span>
+         {icon && <span className="flex items-center gap-1">{icon}</span>}
       </button>
   );
 
@@ -751,14 +815,14 @@ const HungryGhostGame = () => {
           <div key={player.id} className={`p-1.5 rounded-xl border-2 transition-all duration-300 ${isActive ? 'ring-4 ring-yellow-400 shadow-xl scale-[1.02] z-10' : 'scale-100 z-0'} ${bgClass} ${borderClass} flex flex-col gap-1 relative shadow-sm`}>
               <div className="flex flex-col gap-1">
                   {/* Karma Section */}
-                  <div>
-                      <div className="text-[10px] text-gray-500 font-bold mb-1 text-center border-b border-gray-300 pb-0.5">
+                  <div className="border-b border-gray-300 pb-1">
+                      <div className="text-[10px] text-gray-500 font-bold mb-1 text-center">
                           KARMA
                       </div>
                       <div className="flex items-start justify-between gap-1">
                           <div className="flex-1">
                               <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1"><ArrowUp size={10}/> MERIT <ArrowDown size={10}/></div>
-                              <MeritSlider merit={player.merit} />
+                              <MeritSlider merit={player.merit} realm={player.realm} playerColor={player.color} />
                           </div>
                           <div className="flex-1">
                               <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1"><Cloud size={10}/> DELUSION</div>
@@ -767,10 +831,10 @@ const HungryGhostGame = () => {
                       </div>
                   </div>
 
-                  {/* Life Section */}
-                  <div className="flex items-start justify-between gap-1 mt-0.5">
+                  {/* Life Section - Greyed out in spiritual realms */}
+                  <div className={`flex items-start justify-between gap-1 mt-0.5 ${player.realm !== 'human' ? 'opacity-30 pointer-events-none' : ''}`}>
                       <div className="flex-1">
-                          <LifeTrack life={player.life} dana={player.dana} />
+                          <LifeTrack life={player.life} dana={player.dana} playerColor={player.color} />
                       </div>
                       <div className="flex-1">
                           <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1">INSIGHT</div>
@@ -858,22 +922,73 @@ const HungryGhostGame = () => {
                           {mustTakeRobes ? (
                               <div className="flex flex-col items-center justify-center h-full gap-2">
                                   <p className="text-xs text-orange-800 text-center font-bold">You have entered the Temple.</p>
-                                  <ActionButton label="Take Robes" onClick={handleBecomeMonk} icon={<BookOpen size={14}/>} effects={<span className="text-[9px] italic">Become Monk</span>} />
+                                  <ActionButton label="Ordain" onClick={handleBecomeMonk} mandatory={true} icon={<span className="text-sm">🥣</span>} />
                               </div>
                           ) : currentPlayer.realm === 'human' && !showEveningChoice && phase !== 'evening' ? (
                               <>
                                   <ActionButton label="Move" onClick={toggleMoveMode} active={isMoving} icon={<Move size={14}/>} />
-                                  <ActionButton label="Meditate" onClick={handleMeditate} disabled={!currentPlayer.isMeditator} icon={<Cloud size={14}/>} effects={<div className="flex items-center gap-0.5 text-[9px]"><ArrowDown size={8}/>Del/Insight</div>} />
-                                  <ActionButton label="Good Deed" onClick={handleGoodDeed} disabled={currentPlayer.dana < 1 || !canInteract} effects={<div className="flex items-center gap-0.5 text-[9px]"><ArrowDown size={8}/>$<ArrowUp size={8}/>☯</div>} />
-                                  <ActionButton label="Bad Deed" onClick={handleBadDeed} disabled={!canInteract} effects={<div className="flex items-center gap-0.5 text-[9px]"><ArrowDown size={8}/>☯<ArrowUp size={8}/>$</div>} />
-                                  <ActionButton label="Alms" onClick={handleAlms} disabled={phase !== 'morning' || !currentPlayer.isMonk || currentPlayer.location !== 'town'} icon={<DanaCoin size={12}/>} effects={<div className="flex items-center gap-0.5 text-[9px]"><ArrowUp size={8}/>$</div>} />
-                                  <ActionButton label="Learn" disabled={true} effects={<span className="text-[9px] italic">Automatic</span>} />
+                                  <ActionButton label="Meditate" onClick={handleMeditate} disabled={!currentPlayer.isMeditator} icon={<><ArrowDown size={10}/><Cloud size={12}/></>} />
+                                  <ActionButton label="Good Deed" onClick={handleGoodDeed} disabled={currentPlayer.dana < 1 || !canInteract} icon={<><ArrowDown size={10}/><DanaCoin size={10}/><ArrowUp size={10}/>☯</>} />
+                                  <ActionButton label="Bad Deed" onClick={handleBadDeed} disabled={!canInteract} icon={<><ArrowDown size={10}/>☯<ArrowUp size={10}/><DanaCoin size={10}/></>} />
+                                  <ActionButton label="Alms" onClick={handleAlms} disabled={phase !== 'morning' || !currentPlayer.isMonk || currentPlayer.location !== 'town'} icon={<><ArrowUp size={10}/><DanaCoin size={10}/></>} />
                               </>
                           ) : showEveningChoice ? (
                               <div className="flex flex-col gap-2 h-full justify-center animate-in fade-in zoom-in duration-300">
-                                  <p className="text-center text-xs font-bold text-red-600 mb-1">Survive Death?</p>
-                                  <ActionButton label="Pay for Life" onClick={payToSurvive} effects={<div className="flex items-center gap-0.5"><ArrowDown size={8}/><DanaCoin size={12}/></div>} />
-                                  <button onClick={chooseToDie} className="p-2 bg-stone-700 text-white border border-stone-600 rounded font-bold text-xs hover:bg-stone-600 flex items-center justify-between"><span>ACCEPT DEATH</span><Skull size={14}/></button>
+                                  <p className="text-center text-xs font-bold text-purple-600 mb-1">Evening Ritual</p>
+
+                                  {/* Option 1: Age (lose heart) - available if life > 0 */}
+                                  <ActionButton
+                                      label="Age"
+                                      onClick={ageNormally}
+                                      disabled={currentPlayer.life <= 0}
+                                      icon={<><ArrowDown size={10}/><Heart size={12}/></>}
+                                  />
+
+                                  {/* Option 2: Extend (pay Dana) - available if life = 0 AND dana > 0 */}
+                                  <ActionButton
+                                      label="Extend Life"
+                                      onClick={payToSurvive}
+                                      disabled={currentPlayer.life > 0 || currentPlayer.dana <= 0}
+                                      icon={<><ArrowDown size={10}/><DanaCoin size={12}/></>}
+                                  />
+
+                                  {/* Option 3: Die - available if life = 0 */}
+                                  <ActionButton
+                                      label="Die"
+                                      onClick={chooseToDie}
+                                      disabled={currentPlayer.life > 0}
+                                      icon={<Skull size={14}/>}
+                                  />
+                              </div>
+                          ) : showReincarnationChoice && pendingReincarnation ? (
+                              <div className="flex flex-col gap-2 h-full justify-center animate-in fade-in zoom-in duration-300">
+                                  {pendingReincarnation.type === 'victory' ? (
+                                      <>
+                                          <p className="text-center text-xs font-bold text-green-600 mb-1">🏆 ENLIGHTENMENT ACHIEVED! 🏆</p>
+                                          <p className="text-center text-[10px] text-gray-600 mb-2">You have broken the cycle of Samsara</p>
+                                          <ActionButton
+                                              label="Nirvana"
+                                              onClick={confirmReincarnation}
+                                              mandatory={true}
+                                              icon={<span className="text-sm">🪷</span>}
+                                          />
+                                      </>
+                                  ) : (
+                                      <>
+                                          <p className="text-center text-xs font-bold text-purple-600 mb-1">Reincarnation</p>
+                                          <p className="text-center text-[10px] text-gray-600 mb-2">
+                                              You will be reborn in the <span className="font-bold uppercase text-purple-700">{pendingReincarnation.nextRealm}</span> realm
+                                              {pendingReincarnation.nextRole.isTeacher && <span className="block text-green-600">as a Teacher</span>}
+                                              {pendingReincarnation.nextRole.isGreedy && <span className="block text-red-600">as Greedy</span>}
+                                          </p>
+                                          <ActionButton
+                                              label="Reincarnate"
+                                              onClick={confirmReincarnation}
+                                              mandatory={true}
+                                              icon={<><Skull size={12}/><RotateCcw size={12}/></>}
+                                          />
+                                      </>
+                                  )}
                               </div>
                           ) : phase === 'evening' ? (
                               <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
@@ -882,7 +997,12 @@ const HungryGhostGame = () => {
                           ) : (
                               <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
                                   <p className="text-[10px] text-gray-500">In <span className="font-bold uppercase">{currentPlayer.realm}</span></p>
-                                  <button onClick={handlePassTime} className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 shadow-lg text-xs w-full">PASS TIME</button>
+                                  <ActionButton
+                                      label="Pass Time"
+                                      onClick={handlePassTime}
+                                      mandatory={true}
+                                      icon={<ArrowRight size={14}/>}
+                                  />
                               </div>
                           )}
                       </div>
@@ -890,16 +1010,15 @@ const HungryGhostGame = () => {
                       {/* Footer Fixed Actions */}
                       {!showEveningChoice && phase !== 'evening' && currentPlayer.realm === 'human' && (
                           <div className="pt-2 border-t border-gray-200 shrink-0">
-                              <button onClick={skipToEvening} className="w-full p-2 bg-stone-700 text-white rounded hover:bg-stone-600 font-bold flex items-center justify-between px-3 text-[10px]"><span>SKIP</span><span className="font-normal opacity-70">To Evening</span></button>
+                              <ActionButton
+                                  label="Skip to Evening"
+                                  onClick={skipToEvening}
+                                  icon={<FastForward size={14}/>}
+                              />
                           </div>
                       )}
-                      {phase === 'evening' && !showEveningChoice && (
-                           <div className="pt-2 border-t border-gray-200 shrink-0">
-                               <button onClick={advancePhase} className="w-full p-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 font-bold flex items-center justify-between px-3 text-[10px]"><span>END DAY</span><div className="flex items-center opacity-80 gap-0.5"><Heart size={10}/> <ArrowDown size={8}/></div></button>
-                           </div>
-                      )}
                   </div>
-                  <div ref={logContainerRef} className="bg-stone-900 p-3 rounded-xl shadow-inner flex-1 min-h-0 overflow-y-auto font-mono text-[10px] border border-stone-700 h-full">
+                  <div ref={logContainerRef} className="bg-stone-900 p-3 rounded-xl shadow-inner flex-1 min-h-0 overflow-y-auto font-mono text-[10px] border border-stone-700 h-[480px] max-h-[480px]">
                       <div className="font-bold text-stone-500 mb-1 border-b border-stone-700 pb-1 sticky top-0 bg-stone-900">Log</div>
                       <div className="space-y-0.5">
                           {logs.map((log, i) => (

@@ -5,3 +5,100 @@
 body {
   background-color: #f5f5f4; /* bg-stone-100 */
 }
+
+/* Custom animations for game state changes */
+@keyframes fallIn {
+  0% {
+    transform: translateY(-20px) scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(2px) scale(1.1);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fallOut {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(30px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes knockAway {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(10px) scale(0.9);
+  }
+  100% {
+    transform: translateX(50px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes shockwaveOut {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1.2);
+    opacity: 0.3;
+    box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes shockwaveIn {
+  0% {
+    transform: scale(1.5);
+    opacity: 0;
+    box-shadow: 0 0 0 30px rgba(34, 197, 94, 0);
+  }
+  30% {
+    transform: scale(1.3);
+    opacity: 0.5;
+    box-shadow: 0 0 0 15px rgba(34, 197, 94, 0.3);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+/* Animation utility classes */
+.animate-fall-in {
+  animation: fallIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.animate-fall-out {
+  animation: fallOut 0.4s ease-in forwards;
+}
+
+.animate-knock-away {
+  animation: knockAway 0.5s ease-out forwards;
+}
+
+.animate-shockwave-out {
+  animation: shockwaveOut 0.8s ease-out;
+}
+
+.animate-shockwave-in {
+  animation: shockwaveIn 0.8s ease-out;
+}
