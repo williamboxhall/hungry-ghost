@@ -130,6 +130,26 @@ const LifeTrack = ({ life, dana }) => {
 
     return (
         <div className="w-fit">
+            {/* Section Headers */}
+            <div className="flex gap-0.5 items-center mb-0.5 px-0.5">
+                <div className="w-5 h-3 flex items-center justify-center text-[8px] text-gray-500 font-bold">
+                    LIFE
+                </div>
+                {[...Array(LIFE_SLOTS - 1)].map((_, i) => (
+                    <div key={`life-spacer-${i}`} className="w-5 h-3"></div>
+                ))}
+
+                {/* Divider Space */}
+                <div className="w-0.5 h-3 mx-0.5"></div>
+
+                <div className="w-5 h-3 flex items-center justify-center text-[8px] text-gray-500 font-bold">
+                    DANA
+                </div>
+                {[...Array(DANA_SLOTS - 1)].map((_, i) => (
+                    <div key={`dana-spacer-${i}`} className="w-5 h-3"></div>
+                ))}
+            </div>
+
             {/* Numbered Labels */}
             <div className="flex gap-0.5 items-center mb-0.5 px-0.5">
                 {/* Life Labels */}
@@ -730,24 +750,33 @@ const HungryGhostGame = () => {
       return (
           <div key={player.id} className={`p-1.5 rounded-xl border-2 transition-all duration-300 ${isActive ? 'ring-4 ring-yellow-400 shadow-xl scale-[1.02] z-10' : 'scale-100 z-0'} ${bgClass} ${borderClass} flex flex-col gap-1 relative shadow-sm`}>
               <div className="flex flex-col gap-1">
+                  {/* Karma Section */}
                   <div>
-                      <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1"><ArrowUp size={10}/> MERIT <ArrowDown size={10}/></div>
-                      <MeritSlider merit={player.merit} />
-                  </div>
-                  <div>
-                      <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1"><Heart size={10}/> LIFE / DANA <DanaCoin size={10}/></div>
-                      <LifeTrack life={player.life} dana={player.dana} />
-                  </div>
-                  <div className="flex items-start justify-between gap-1 mt-0.5">
-                      <div>
-                         <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1"><Cloud size={10}/> DELUSION</div>
-                         <DelusionGrid delusion={player.delusion} />
+                      <div className="text-[10px] text-gray-500 font-bold mb-1 text-center border-b border-gray-300 pb-0.5">
+                          KARMA
                       </div>
-                      <div className="flex flex-col items-center">
-                         <div className="text-[10px] text-gray-500 font-bold mb-0.5 text-center">INSIGHT</div>
-                         <div className="transform scale-75 origin-bottom">
-                            <InsightLotus insight={player.insight} />
-                         </div>
+                      <div className="flex items-start justify-between gap-1">
+                          <div className="flex-1">
+                              <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1"><ArrowUp size={10}/> MERIT <ArrowDown size={10}/></div>
+                              <MeritSlider merit={player.merit} />
+                          </div>
+                          <div className="flex-1">
+                              <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1"><Cloud size={10}/> DELUSION</div>
+                              <DelusionGrid delusion={player.delusion} />
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Life Section */}
+                  <div className="flex items-start justify-between gap-1 mt-0.5">
+                      <div className="flex-1">
+                          <LifeTrack life={player.life} dana={player.dana} />
+                      </div>
+                      <div className="flex-1">
+                          <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1">INSIGHT</div>
+                          <div className="transform scale-75 origin-top-left -translate-x-7">
+                              <InsightLotus insight={player.insight} />
+                          </div>
                       </div>
                   </div>
               </div>
