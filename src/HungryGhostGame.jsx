@@ -69,12 +69,30 @@ const Meeple = ({ player, size = "normal" }) => {
 const MeritSlider = ({ merit }) => {
   const steps = Array.from({ length: 11 }, (_, i) => i - 5);
 
+  const getMeritLabelColor = (value) => {
+    if (value === -5) return "text-red-600";
+    if (value === -4) return "text-red-500";
+    if (value === -3) return "text-red-400";
+    if (value === -2) return "text-pink-500";
+    if (value === -1) return "text-pink-400";
+    if (value === 0) return "text-gray-400";
+    if (value === 1) return "text-blue-300";
+    if (value === 2) return "text-blue-400";
+    if (value === 3) return "text-blue-500";
+    if (value === 4) return "text-blue-600";
+    if (value === 5) return "text-blue-700";
+    return "text-gray-400";
+  };
+
   return (
     <div className="w-fit">
-      <div className="flex justify-between text-[9px] text-gray-500 font-mono mb-0.5 px-1">
-        <span className="text-red-500 font-bold">-5</span>
-        <span className="text-stone-500">0</span>
-        <span className="text-blue-500 font-bold">+5</span>
+      {/* Gradient Colored Labels */}
+      <div className="flex gap-0.5 items-center mb-0.5 px-0.5">
+        {steps.map((step) => (
+          <div key={step} className={`w-5 h-3 flex items-center justify-center text-[8px] font-mono ${getMeritLabelColor(step)}`}>
+            {step >= 0 ? `+${step}` : step}
+          </div>
+        ))}
       </div>
       
       {/* Track Container */}
@@ -109,45 +127,66 @@ const LifeTrack = ({ life, dana }) => {
     const TOTAL_SLOTS = 15;
     const LIFE_SLOTS = 5;
     const DANA_SLOTS = 10;
-    
+
     return (
-        <div className="flex gap-0.5 items-center bg-stone-200/50 p-0.5 rounded-lg border border-stone-300/50 w-fit">
-            {/* Life Section */}
-            {[...Array(LIFE_SLOTS)].map((_, i) => {
-                const isEmpty = i < (LIFE_SLOTS - life);
-                return (
-                    <div 
-                        key={`life-${i}`} 
-                        className={`relative w-5 h-5 rounded flex items-center justify-center bg-white border border-stone-200`}
-                    >
-                        {!isEmpty ? (
-                            <Heart size={12} className="text-red-500 fill-red-500 drop-shadow-sm" />
-                        ) : (
-                            <Heart size={12} className="text-stone-300 opacity-50" strokeWidth={1.5} />
-                        )}
+        <div className="w-fit">
+            {/* Numbered Labels */}
+            <div className="flex gap-0.5 items-center mb-0.5 px-0.5">
+                {/* Life Labels */}
+                {[...Array(LIFE_SLOTS)].map((_, i) => (
+                    <div key={`life-label-${i}`} className="w-5 h-3 flex items-center justify-center text-[8px] text-gray-400 font-mono">
+                        {i + 1}
                     </div>
-                );
-            })}
+                ))}
 
-            {/* Divider */}
-            <div className="w-0.5 h-4 bg-stone-300 mx-0.5"></div>
+                {/* Divider Space */}
+                <div className="w-0.5 h-3 mx-0.5"></div>
 
-            {/* Dana Section */}
-            {[...Array(DANA_SLOTS)].map((_, i) => {
-                const hasCoin = i < dana;
-                return (
-                    <div 
-                        key={`dana-${i}`} 
-                        className={`relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner`}
-                    >
-                        {hasCoin ? (
-                            <DanaCoin size={16} />
-                        ) : (
-                            <DanaCoin size={16} faded={true} />
-                        )}
+                {/* Dana Labels */}
+                {[...Array(DANA_SLOTS)].map((_, i) => (
+                    <div key={`dana-label-${i}`} className="w-5 h-3 flex items-center justify-center text-[8px] text-gray-400 font-mono">
+                        {LIFE_SLOTS + i + 1}
                     </div>
-                );
-            })}
+                ))}
+            </div>
+            <div className="flex gap-0.5 items-center bg-stone-200/50 p-0.5 rounded-lg border border-stone-300/50 w-fit">
+                {/* Life Section */}
+                {[...Array(LIFE_SLOTS)].map((_, i) => {
+                    const isEmpty = i < (LIFE_SLOTS - life);
+                    return (
+                        <div
+                            key={`life-${i}`}
+                            className={`relative w-5 h-5 rounded flex items-center justify-center bg-white border border-stone-200`}
+                        >
+                            {!isEmpty ? (
+                                <Heart size={12} className="text-red-500 fill-red-500 drop-shadow-sm" />
+                            ) : (
+                                <Heart size={12} className="text-stone-300 opacity-50" strokeWidth={1.5} />
+                            )}
+                        </div>
+                    );
+                })}
+
+                {/* Divider */}
+                <div className="w-0.5 h-4 bg-stone-300 mx-0.5"></div>
+
+                {/* Dana Section */}
+                {[...Array(DANA_SLOTS)].map((_, i) => {
+                    const hasCoin = i < dana;
+                    return (
+                        <div
+                            key={`dana-${i}`}
+                            className={`relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner`}
+                        >
+                            {hasCoin ? (
+                                <DanaCoin size={16} />
+                            ) : (
+                                <DanaCoin size={16} faded={true} />
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 };
@@ -224,7 +263,7 @@ const HungryGhostGame = () => {
   const [currentPlayerIdx, setCurrentPlayerIdx] = useState(0);
   const [actionsLeft, setActionsLeft] = useState(2);
   const [phase, setPhase] = useState('morning'); 
-  const [logs, setLogs] = useState(["Game started. Welcome to the Human Realm."]);
+  const [logs, setLogs] = useState([{ message: "Game started. Welcome to the Human Realm.", type: "neutral" }]);
   const [winner, setWinner] = useState(null);
   const [showEveningChoice, setShowEveningChoice] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
@@ -233,15 +272,37 @@ const HungryGhostGame = () => {
 
   // Players
   const [players, setPlayers] = useState([
-    { id: 0, name: 'Blue', color: 'bg-blue-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false },
-    { id: 1, name: 'Green', color: 'bg-green-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false },
-    { id: 2, name: 'Red', color: 'bg-red-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false }
+    { id: 0, name: 'Blue', color: 'bg-blue-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, dayCount: 1, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false },
+    { id: 1, name: 'Green', color: 'bg-green-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, dayCount: 1, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false },
+    { id: 2, name: 'Red', color: 'bg-red-600', location: 'town', realm: 'human', life: 5, merit: 0, dana: 0, delusion: INITIAL_DELUSION, insight: 0, dayCount: 1, isMonk: false, isMeditator: false, isTeacher: false, isGreedy: false }
   ]);
 
   const currentPlayer = players[currentPlayerIdx];
 
-  const addLog = (msg) => {
-    setLogs(prev => [...prev, msg]);
+  const addLog = (msg, type = "neutral", playerId = null) => {
+    setLogs(prev => [...prev, { message: msg, type, playerId }]);
+  };
+
+  const getPlayerLogColor = (playerId) => {
+    if (playerId === null) return "text-white";
+    const player = players.find(p => p.id === playerId);
+    if (!player) return "text-white";
+
+    if (player.color.includes('blue')) return "text-blue-400";
+    if (player.color.includes('green')) return "text-green-400";
+    if (player.color.includes('red')) return "text-red-400";
+    return "text-white";
+  };
+
+  const getBorderColor = (playerId) => {
+    if (playerId === null) return "border-stone-600";
+    const player = players.find(p => p.id === playerId);
+    if (!player) return "border-stone-600";
+
+    if (player.color.includes('blue')) return "border-blue-600";
+    if (player.color.includes('green')) return "border-green-600";
+    if (player.color.includes('red')) return "border-red-600";
+    return "border-stone-600";
   };
 
   useEffect(() => {
@@ -273,24 +334,30 @@ const HungryGhostGame = () => {
   const advancePhase = () => {
       if (phase === 'morning') {
           setPhase('afternoon');
-          addLog("It is now Afternoon.");
+          addLog("It is now Afternoon.", "neutral");
       } else if (phase === 'afternoon') {
           setPhase('evening');
-          addLog("It is now Evening. Time for the end of day ritual.");
+          addLog("It is now Evening. Time for the end of day ritual.", "neutral");
       } else {
           // End of Evening -> Next Turn
           setPhase('morning');
           setShowEveningChoice(false);
           let nextIdx = (currentPlayerIdx + 1) % players.length;
+
+          // Increment day count for the next player
+          setPlayers(prev => prev.map(p =>
+              p.id === nextIdx ? { ...p, dayCount: p.dayCount + 1 } : p
+          ));
+
           setCurrentPlayerIdx(nextIdx);
-          addLog(`It is Morning. ${players[nextIdx].name}'s turn begins.`);
+          addLog(`It is Morning. ${players[nextIdx].name}'s turn begins.`, "neutral", nextIdx);
       }
   };
 
   // Skip actions and go straight to Evening ritual
   const skipToEvening = () => {
       setPhase('evening');
-      addLog(`${currentPlayer.name} skipped the rest of the day.`);
+      addLog(`${currentPlayer.name} skipped the rest of the day.`, "player", currentPlayer.id);
       // Logic triggered by useEffect
   };
 
@@ -302,7 +369,7 @@ const HungryGhostGame = () => {
       
       setIsMoving(!isMoving);
       if (!isMoving) {
-          addLog("Select a location to move to.");
+          addLog("Select a location to move to.", "player", currentPlayer.id);
       }
   };
 
@@ -313,7 +380,7 @@ const HungryGhostGame = () => {
       const targetLocIdx = LOCATIONS.findIndex(l => l.id === locId);
       
       if (Math.abs(currentLocIdx - targetLocIdx) !== 1) {
-          addLog("Too far! You can only move to adjacent locations.");
+          addLog("Too far! You can only move to adjacent locations.", "player", currentPlayer.id);
           return;
       }
 
@@ -335,7 +402,7 @@ const HungryGhostGame = () => {
                 if (p.isGreedy && targetLoc === 'town') {
                     next.merit = Math.max(MIN_MERIT, next.merit - 1);
                     next.dana = next.dana + 1;
-                    greedyLog = `${p.name} (Greedy) stole entering Town! (-1 Merit, +1 Dana)`;
+                    greedyLog = { message: `${p.name} (Greedy) stole Dana +1 entering Town for Merit -1`, playerId: p.id };
                 }
                 return next;
             }
@@ -382,11 +449,11 @@ const HungryGhostGame = () => {
     });
 
     if (greedyLog) {
-        addLog(greedyLog);
+        addLog(greedyLog.message, "player", greedyLog.playerId);
     }
 
     advancePhase();
-    addLog(`${currentPlayer.name} moved to ${targetLoc}.`);
+    addLog(`${currentPlayer.name} moved to ${targetLoc}.`, "player", currentPlayer.id);
   };
 
   const handleMeditate = () => {
@@ -404,13 +471,13 @@ const HungryGhostGame = () => {
 
         if (newDelusion > 0) {
             newDelusion = Math.max(0, newDelusion - delusionDrop);
-            addLog(`${currentPlayer.name} meditated. Delusion reduced by ${delusionDrop}.`);
+            addLog(`${currentPlayer.name} meditated for Delusion -${delusionDrop}`, "player", currentPlayer.id);
             if (newDelusion === 0 && prev.delusion > 0) {
-                addLog(`${currentPlayer.name} has cleared all Delusion!`);
+                addLog(`${currentPlayer.name} has cleared all delusion!`, "player", currentPlayer.id);
             }
         } else {
             newInsight += delusionDrop;
-            addLog(`${currentPlayer.name} meditated in clarity. Gained ${delusionDrop} Insight.`);
+            addLog(`${currentPlayer.name} meditated in clarity for Insight +${delusionDrop}`, "player", currentPlayer.id);
         }
         return { delusion: newDelusion, insight: newInsight };
     });
@@ -431,9 +498,10 @@ const HungryGhostGame = () => {
     if (others.length > 0 && currentPlayer.location !== 'town') {
         const receiver = others[0];
         updatePlayer(receiver.id, (prev) => ({ dana: prev.dana + 1 }));
-        addLog(`${currentPlayer.name} gave 1 Dana to ${receiver.name} (Good Deed).`);
+        addLog(`${currentPlayer.name} gave Dana -1 to ${receiver.name} for Merit +1`, "player", currentPlayer.id);
+        addLog(`${receiver.name} received Dana +1 from ${currentPlayer.name}'s good deed`, "player", receiver.id);
     } else {
-        addLog(`${currentPlayer.name} donated 1 Dana to the temple box.`);
+        addLog(`${currentPlayer.name} donated Dana -1 to temple box for Merit +1`, "player", currentPlayer.id);
     }
 
     advancePhase();
@@ -441,68 +509,62 @@ const HungryGhostGame = () => {
 
   const handleBadDeed = () => {
     if (phase === 'evening') return;
-    
+
+    // Capture victims before update
+    const victimsWithDana = getPlayersAt(currentPlayer.location).filter(p => p.id !== currentPlayer.id && p.dana > 0);
+    const townBonus = currentPlayer.location === 'town' ? 1 : 0;
+
     // Atomic update for bad deed
     setPlayers(currentPlayers => {
         const me = currentPlayers.find(p => p.id === currentPlayerIdx);
-        let gained = 0;
-        let logDetails = [];
-        
-        const updatedPlayers = currentPlayers.map(p => {
-            if (p.location === me.location && p.id !== me.id) {
-                if (p.dana > 0) {
-                    gained++;
-                    logDetails.push(`${p.name}`);
-                    return { ...p, dana: p.dana - 1 };
-                }
-            }
-            return p;
-        });
+        const totalGain = victimsWithDana.length + townBonus;
 
-        const townBonus = (me.location === 'town') ? 1 : 0;
-        if (townBonus) logDetails.push("Town");
-        const totalGain = gained + townBonus;
-
-        return updatedPlayers.map(p => {
+        return currentPlayers.map(p => {
             if (p.id === me.id) {
-                return { 
-                    ...p, 
+                return {
+                    ...p,
                     merit: Math.max(MIN_MERIT, p.merit - 1),
                     dana: p.dana + totalGain
                 };
+            } else if (victimsWithDana.some(v => v.id === p.id)) {
+                return { ...p, dana: p.dana - 1 };
             }
             return p;
         });
     });
-    
-    // Reconstruct log info
-    const victims = getPlayersAt(currentPlayer.location).filter(p => p.id !== currentPlayer.id && p.dana > 0).map(p => p.name);
-    let gainMsg = "";
-    let totalGained = victims.length + (currentPlayer.location === 'town' ? 1 : 0);
-    
-    if (totalGained > 0) {
-        let sources = [...victims];
-        if (currentPlayer.location === 'town') sources.push("Town");
-        gainMsg = `Stole ${totalGained} Dana (${sources.join(", ")}).`;
+
+    // Log the bad deed action
+    const totalStolen = victimsWithDana.length + townBonus;
+    if (totalStolen > 0) {
+        const sources = [];
+        if (townBonus > 0) sources.push("Town");
+        victimsWithDana.forEach(victim => sources.push(victim.name));
+
+        addLog(`${currentPlayer.name} committed a bad deed and stole Dana +${totalStolen} (${sources.join(", ")}) for Merit -1`, "player", currentPlayer.id);
+
+        // Log individual victim losses
+        victimsWithDana.forEach(victim => {
+            addLog(`${victim.name} lost Dana -1 from ${currentPlayer.name}'s theft`, "player", victim.id);
+        });
     } else {
-        gainMsg = "Found nothing to steal.";
+        addLog(`${currentPlayer.name} committed a bad deed but found nothing to steal for Merit -1`, "player", currentPlayer.id);
     }
 
     advancePhase();
-    addLog(`${currentPlayer.name} committed a Bad Deed. ${gainMsg} (-1 Merit)`);
   };
 
   const handleAlms = () => {
     if (phase !== 'morning') return;
     
     updatePlayer(currentPlayer.id, (prev) => ({ dana: prev.dana + 1 }));
-    addLog(`${currentPlayer.name} collected Alms. (+1 Dana)`);
+    addLog(`${currentPlayer.name} collected Dana +1 from alms`, "player", currentPlayer.id);
     advancePhase();
   };
 
   const handleBecomeMonk = () => {
-      updatePlayer(currentPlayer.id, { isMonk: true, dana: 0 }); 
-      addLog(`${currentPlayer.name} has taken robes and become a Monk.`);
+      const danaLost = currentPlayer.dana;
+      updatePlayer(currentPlayer.id, { isMonk: true, dana: 0 });
+      addLog(`${currentPlayer.name} took robes and became a Monk (lost all Dana -${danaLost})`, "player", currentPlayer.id);
   };
 
   // --- Evening Logic ---
@@ -520,12 +582,12 @@ const HungryGhostGame = () => {
               if (p.realm === 'heaven') {
                   newDelusion = Math.max(0, p.delusion - 1);
                   newMerit = Math.max(0, p.merit - 1);
-                  addLog("Heavenly existence reduces delusion.");
+                  addLog(`${p.name} heavenly existence: Delusion -1, Merit -1`, "neutral", p.id);
               } else if (p.realm === 'hell') {
                   newDelusion = p.delusion + 1;
                   newMerit = Math.min(0, p.merit + 1);
                   newLife = Math.abs(newMerit);
-                  addLog("Hellish suffering increases delusion.");
+                  addLog(`${p.name} hellish suffering: Delusion +1, Merit +1`, "neutral", p.id);
               }
 
               if (p.realm === 'human' && newLife <= 0) {
@@ -551,11 +613,10 @@ const HungryGhostGame = () => {
   }, [phase, showEveningChoice, players]);
 
   const payToSurvive = () => {
-      updatePlayer(currentPlayer.id, (prev) => ({ 
-          life: 1, 
-          dana: prev.dana - 1 
+      updatePlayer(currentPlayer.id, (prev) => ({
+          dana: prev.dana - 1
       }));
-      addLog(`${currentPlayer.name} paid 1 Dana to extend life.`);
+      addLog(`${currentPlayer.name} paid Dana -1 to avoid death this evening`, "player", currentPlayer.id);
       setShowEveningChoice(false);
   };
 
@@ -572,11 +633,11 @@ const HungryGhostGame = () => {
   const handleDeath = (player) => {
       if (player.insight >= WINNING_INSIGHT) {
           setWinner(player);
-          addLog(`*** ${player.name} HAS AWAKENED! GAME OVER ***`);
+          addLog(`*** ${player.name} HAS AWAKENED! GAME OVER ***`, "neutral", player.id);
           return;
       }
 
-      addLog(`${player.name} has died.`);
+      addLog(`${player.name} has died.`, "player", player.id);
       
       let nextRealm = 'human';
       let nextRole = { isTeacher: false, isGreedy: false, isMonk: false, isMeditator: false };
@@ -603,9 +664,10 @@ const HungryGhostGame = () => {
       updatePlayer(player.id, {
           realm: nextRealm,
           life: startingLife,
-          dana: 0, 
-          insight: 0, 
-          location: 'town', 
+          dana: 0,
+          insight: 0,
+          location: 'town',
+          dayCount: 1,
           isMonk: nextRole.isMonk,
           isTeacher: nextRole.isTeacher,
           isGreedy: nextRole.isGreedy,
@@ -613,7 +675,7 @@ const HungryGhostGame = () => {
           merit: newMerit
       });
 
-      addLog(`${player.name} reincarnated in ${nextRealm} Realm!`);
+      addLog(`${player.name} reincarnated in ${nextRealm} Realm!`, "player", player.id);
   };
 
   const othersHere = getPlayersAt(currentPlayer.location).filter(p => p.id !== currentPlayer.id);
@@ -756,9 +818,9 @@ const HungryGhostGame = () => {
               </div>
 
               <div className="flex gap-4 flex-1 min-h-0">
-                  <div className={`p-3 rounded-xl shadow-sm border-2 transition-colors duration-300 w-52 flex flex-col shrink-0 h-full ${getActionPanelStyle()}`}>
+                  <div className={`p-3 rounded-xl shadow-sm border-2 transition-colors duration-300 w-52 flex flex-col shrink-0 h-96 ${getActionPanelStyle()}`}>
                       <h3 className={`font-bold text-xs mb-2 pb-1 border-b ${getActionHeaderStyle()} flex justify-between items-center shrink-0`}>
-                          <span>{currentPlayer.name}</span>
+                          <span>{currentPlayer.name} - Day {currentPlayer.dayCount}</span>
                           <span className="flex items-center gap-1 font-normal bg-white/50 px-2 py-0.5 rounded text-[10px] uppercase">
                               {getPhaseIcon()} {phase}
                           </span>
@@ -808,9 +870,15 @@ const HungryGhostGame = () => {
                            </div>
                       )}
                   </div>
-                  <div ref={logContainerRef} className="bg-stone-900 text-green-400 p-3 rounded-xl shadow-inner flex-1 min-h-0 overflow-y-auto font-mono text-[10px] border border-stone-700 h-full">
+                  <div ref={logContainerRef} className="bg-stone-900 p-3 rounded-xl shadow-inner flex-1 min-h-0 overflow-y-auto font-mono text-[10px] border border-stone-700 h-full">
                       <div className="font-bold text-stone-500 mb-1 border-b border-stone-700 pb-1 sticky top-0 bg-stone-900">Log</div>
-                      {logs.map((log, i) => (<div key={i} className="mb-0.5 opacity-90 border-l-2 border-green-800 pl-2">{log}</div>))}
+                      <div className="space-y-0.5">
+                          {logs.map((log, i) => (
+                              <div key={i} className={`opacity-90 border-l-2 pl-2 ${getPlayerLogColor(log.playerId)} ${getBorderColor(log.playerId)}`}>
+                                  {log.message}
+                              </div>
+                          ))}
+                      </div>
                   </div>
               </div>
           </div>
