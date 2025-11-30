@@ -232,7 +232,7 @@ export const LifeTrack = ({ player, previousPlayer = null }) => {
             } else if (position > age) {
                 // Positions to the right of head
                 if (position >= 1 && position <= 5) {
-                    // Life positions to the right of head (1-5): empty heart sockets
+                    // Life positions to the right of head (1-5): solid hearts to collect
                     trackState[position] = 'heart';
                 } else {
                     // determine if coin or coin_socket based on amount of dana

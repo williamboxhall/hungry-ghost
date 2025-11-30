@@ -347,6 +347,25 @@ const HungryGhostGame = () => {
                       </>
                     )}
                   </div>
+                ) : gameState.phase === 'evening' && currentPlayer.realm !== 'human' ? (
+                  <div className="flex flex-col gap-2 h-full justify-center">
+                    <ActionButton
+                      label="Wait"
+                      onClick={() => {
+                        gameController.handleEveningArrival();
+                        gameController.advancePhase();
+                        syncGameState();
+                      }}
+                      mandatory={true}
+                      icon={currentPlayer.realm === 'heaven' ?
+                        <><YinYang size={10} filled={true}/><ArrowDown size={8}/><span className="text-xs">☁️</span><ArrowDown size={8}/></> :
+                        <><YinYang size={10} filled={true}/><ArrowUp size={8}/><span className="text-xs">☁️</span><ArrowUp size={8}/></>
+                      }
+                    />
+                    <p className="text-center text-[8px] text-gray-500">
+                      {currentPlayer.realm === 'heaven' ? 'Karma down, delusion down' : 'Karma up, delusion up'}
+                    </p>
+                  </div>
                 ) : gameState.phase === 'evening' ? (
                   <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
                     <p className="text-[10px] text-gray-500">Evening Ritual Complete</p>
