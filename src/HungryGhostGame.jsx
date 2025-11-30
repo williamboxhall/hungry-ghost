@@ -41,14 +41,6 @@ const HungryGhostGame = () => {
     }
   }, [gameState.logs]);
 
-  // Evening Ritual Effect - Runs ONLY when phase changes to evening
-  useEffect(() => {
-    if (gameState.phase === 'evening') {
-      gameController.handleEveningArrival();
-      syncGameState();
-    }
-  }, [gameState.phase]);
-
   // Auto-advance spiritual realm players to evening
   useEffect(() => {
     const currentPlayer = gameController.getCurrentPlayer();

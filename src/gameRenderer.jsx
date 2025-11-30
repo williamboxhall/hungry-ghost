@@ -261,7 +261,7 @@ export const LifeTrack = ({ player, previousPlayer = null }) => {
     const renderSlot = (currentSlotState, previousSlotState) => {
         // Check if animation needed (slot changed from previous state)
         const isAnimating = previousSlotState && currentSlotState !== previousSlotState;
-        const isHeartAnimation = previousSlotState === 'heart' && currentSlotState === 'head_socket';
+        const isHeartAnimation = previousSlotState === 'heart' && currentSlotState === 'heart_socket';
         const isCoinAnimation = previousSlotState === 'coin' && currentSlotState === 'coin_socket';
 
         return (
