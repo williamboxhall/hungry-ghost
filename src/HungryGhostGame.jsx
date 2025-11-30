@@ -16,6 +16,35 @@ const INITIAL_LIFE = 5;
 
 // --- Visual Components ---
 
+const YinYang = ({ size = 10, className = "", filled = false }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+    {filled ? (
+      // Filled version with proper black and white and visible dots
+      <>
+        <circle cx="12" cy="12" r="11" fill="white" stroke="black" strokeWidth="1"/>
+        <path d="M12 1 A11 11 0 0 0 12 23 A5.5 5.5 0 0 0 12 12 A5.5 5.5 0 0 1 12 1 Z" fill="black"/>
+        <circle cx="12" cy="17.5" r="2.5" fill="white"/>
+        <circle cx="12" cy="6.5" r="2.5" fill="black"/>
+      </>
+    ) : (
+      // Outline version
+      <>
+        <circle cx="12" cy="12" r="11" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M12 1 A11 11 0 0 0 12 23 A5.5 5.5 0 0 0 12 12 A5.5 5.5 0 0 1 12 1 Z" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+        <circle cx="12" cy="6.5" r="2" fill="none" stroke="currentColor" strokeWidth="1"/>
+        <circle cx="12" cy="17.5" r="2" fill="none" stroke="currentColor" strokeWidth="1"/>
+      </>
+    )}
+  </svg>
+);
+
+const HeadOutline = ({ size = 12, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+    <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M6 18c0-4 2.5-6 6-6s6 2 6 6" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+  </svg>
+);
+
 const DanaCoin = ({ size = 16, className = "", faded = false }) => (
   <div
     className={`rounded-full flex items-center justify-center font-bold shadow-sm leading-none select-none ${faded ? 'bg-stone-200 border-stone-300 text-stone-400' : 'bg-yellow-400 border border-yellow-600 text-yellow-900'} ${className}`}
@@ -107,27 +136,36 @@ const MeritSlider = ({ merit, realm = 'human', playerColor = '' }) => {
 
   return (
     <div className="w-fit">
-      {/* Gradient Colored Labels */}
+      {/* Merit header: left arrow, yin-yang, right arrow */}
       <div className="flex gap-0.5 items-center mb-0.5 px-0.5">
-        {steps.map((step) => (
-          <div key={step} className={`w-5 h-3 flex items-center justify-center text-[8px] font-mono ${getMeritLabelColor(step)}`}>
-            {step >= 0 ? `+${step}` : step}
+        {steps.map((step, index) => (
+          <div key={step} className="w-5 h-3 flex items-center justify-center text-[8px] text-black font-bold">
+            {step === -1 && "←"}
+            {step === 0 && <YinYang size={8} filled={true} />}
+            {step === 1 && "→"}
           </div>
         ))}
       </div>
-      
+
+      {/* Numbered Labels */}
+      <div className="flex gap-0.5 items-center mb-0.5 px-0.5">
+        {steps.map((step) => (
+          <div key={step} className={`w-5 h-3 flex items-center justify-center text-[8px] font-mono ${getMeritLabelColor(step)}`}>
+            {step === 0 ? "0" : step > 0 ? `+${step}` : step}
+          </div>
+        ))}
+      </div>
+
       {/* Track Container */}
-      <div className="relative flex items-center gap-0.5 bg-stone-200/50 rounded-full border border-stone-300 p-0.5 shadow-inner">
+      <div className="relative flex items-center gap-0.5 bg-stone-200/50 rounded-lg border border-stone-300 p-0.5 shadow-inner">
         {/* Sockets */}
         {steps.map((step) => (
-            <div 
-                key={step} 
-                className={`
-                    relative z-0 w-5 h-5 rounded-full shadow-inner flex items-center justify-center
-                    ${step === 0 ? 'bg-stone-300 border border-stone-400' : 'bg-white/50 border border-stone-200'}
-                `}
+            <div
+                key={step}
+                className="relative z-0 w-5 h-5 rounded shadow-inner flex items-center justify-center bg-stone-300/50 border border-stone-400/50"
             >
-                {step === 0 && <div className="w-1.5 h-1.5 bg-stone-400 rounded-full"></div>}
+                {/* Base yin-yang symbol for empty sockets */}
+                <YinYang size={10} className="opacity-50 text-stone-400" filled={false} />
 
                 {/* Hearts for spiritual realms */}
                 {isInSpiritualRealm && heartPositions.includes(step) && (
@@ -138,9 +176,7 @@ const MeritSlider = ({ merit, realm = 'human', playerColor = '' }) => {
 
                 {merit === step && (
                     <div className="absolute inset-0 flex items-center justify-center z-10">
-                        <div className="w-5 h-5 bg-white border-2 border-stone-800 rounded-full flex items-center justify-center text-[10px] shadow-md transform scale-110">
-                            ☯
-                        </div>
+                        <YinYang size={14} filled={true} />
                     </div>
                 )}
             </div>
@@ -165,30 +201,16 @@ const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana =
 
     return (
         <div className="w-fit">
-            {/* Section Headers */}
+            {/* Section Header */}
             <div className="flex gap-0.5 items-center mb-0.5 px-0.5">
-                {/* Aging position header */}
+                {/* Head icon aligned above position zero */}
                 <div className="w-5 h-3 flex items-center justify-center text-[8px] text-gray-500 font-bold">
                     👤
                 </div>
-
-                {/* Life headers */}
+                {/* Arrow with spacing, like merit header */}
                 <div className="w-5 h-3 flex items-center justify-center text-[8px] text-gray-500 font-bold">
-                    LIFE
+                    →
                 </div>
-                {[...Array(LIFE_SLOTS - 1)].map((_, i) => (
-                    <div key={`life-spacer-${i}`} className="w-5 h-3"></div>
-                ))}
-
-                {/* Divider Space */}
-                <div className="w-0.5 h-3 mx-0.5"></div>
-
-                <div className="w-5 h-3 flex items-center justify-center text-[8px] text-gray-500 font-bold">
-                    DANA
-                </div>
-                {[...Array(DANA_SLOTS - 1)].map((_, i) => (
-                    <div key={`dana-spacer-${i}`} className="w-5 h-3"></div>
-                ))}
             </div>
 
             {/* Numbered Labels */}
@@ -205,9 +227,6 @@ const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana =
                     </div>
                 ))}
 
-                {/* Divider Space */}
-                <div className="w-0.5 h-3 mx-0.5"></div>
-
                 {/* Dana Labels */}
                 {[...Array(DANA_SLOTS)].map((_, i) => (
                     <div key={`dana-label-${i}`} className="w-5 h-3 flex items-center justify-center text-[8px] text-gray-400 font-mono">
@@ -218,12 +237,13 @@ const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana =
 
             <div className="flex gap-0.5 items-center bg-stone-200/50 p-0.5 rounded-lg border border-stone-300/50 w-fit">
                 {/* Aging Position (0) */}
-                <div className="relative w-5 h-5 rounded flex items-center justify-center bg-green-50 border border-green-300">
-                    {agePosition === 0 && (
+                <div className="relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner">
+                    {agePosition === 0 ? (
                         <span className="text-sm">👤</span>
-                    )}
-                    {agePosition !== 0 && placedDana.includes(0) && (
+                    ) : placedDana.includes(0) ? (
                         <DanaCoin size={12} />
+                    ) : (
+                        <HeadOutline size={12} className="text-stone-400 opacity-50" />
                     )}
                 </div>
 
@@ -237,7 +257,7 @@ const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana =
                     return (
                         <div
                             key={`life-${i}`}
-                            className={`relative w-5 h-5 rounded flex items-center justify-center bg-white border border-stone-200`}
+                            className={`relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner`}
                         >
                             {isHeadHere && (
                                 <span className="absolute z-20 text-sm">👤</span>
@@ -249,14 +269,11 @@ const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana =
                                 <DanaCoin size={12} />
                             )}
                             {heartCollected && !hasDana && !isHeadHere && (
-                                <Heart size={12} className="text-stone-300 opacity-30" strokeWidth={1.5} />
+                                <Heart size={12} className="text-stone-400 opacity-50" strokeWidth={1.5} />
                             )}
                         </div>
                     );
                 })}
-
-                {/* Divider */}
-                <div className="w-0.5 h-4 bg-stone-300 mx-0.5"></div>
 
                 {/* Dana Section */}
                 {[...Array(DANA_SLOTS)].map((_, i) => {
@@ -284,19 +301,22 @@ const LifeTrack = ({ life, dana, playerColor = '', agePosition = 0, placedDana =
 };
 
 // Delusion Grid
-const DelusionGrid = ({ delusion }) => {
+const DelusionGrid = ({ delusion, playerColor = '' }) => {
+    const getCloudColor = () => {
+        if (playerColor.includes('blue')) return "text-blue-600 fill-blue-500";
+        if (playerColor.includes('green')) return "text-green-600 fill-green-500";
+        if (playerColor.includes('red')) return "text-red-600 fill-red-500";
+        return "text-stone-600 fill-stone-500";
+    };
+
     return (
-        <div className="grid grid-cols-10 gap-0.5 w-fit bg-stone-300/50 p-0.5 rounded border border-stone-300/50 shadow-inner">
+        <div className="grid grid-cols-10 gap-1 w-fit p-1">
             {[...Array(30)].map((_, i) => (
-                <div 
-                    key={i} 
-                    className="w-5 h-5 flex items-center justify-center bg-white/60 rounded-sm shadow-sm border border-stone-100"
-                >
+                <div key={i} className="flex items-center justify-center">
                     {i < delusion ? (
-                        <Cloud size={12} className="text-stone-600 fill-stone-500" />
+                        <Cloud size={12} className={getCloudColor()} />
                     ) : (
-                        // Empty slot
-                        <div className="w-1.5 h-1.5 bg-stone-200 rounded-full opacity-30"></div>
+                        <Cloud size={12} className="text-stone-400 opacity-30" />
                     )}
                 </div>
             ))}
@@ -758,14 +778,8 @@ const HungryGhostGame = () => {
               updatePlayer(currentPlayer.id, (prev) => ({
                   agePosition: newPosition,
                   life: prev.life + 1,
-                  removingHeart: null,
-                  gainingDana: true // Trigger dana gain animation for the heart collection
+                  removingHeart: null
               }));
-
-              // Clear dana gain animation after delay
-              setTimeout(() => {
-                  updatePlayer(currentPlayer.id, { gainingDana: false });
-              }, 600);
 
               setShowEveningChoice(false);
               advancePhase();
@@ -976,18 +990,18 @@ const HungryGhostGame = () => {
                       </div>
                       <div className="flex items-start justify-between gap-1">
                           <div className="flex-1">
-                              <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1"><ArrowUp size={10}/> MERIT <ArrowDown size={10}/></div>
                               <MeritSlider merit={player.merit} realm={player.realm} playerColor={player.color} />
                           </div>
                           <div className="flex-1">
-                              <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1"><Cloud size={10}/> DELUSION</div>
-                              <DelusionGrid delusion={player.delusion} />
+                              <div className="flex justify-end">
+                                  <DelusionGrid delusion={player.delusion} playerColor={player.color} />
+                              </div>
                           </div>
                       </div>
                   </div>
 
                   {/* Life Section - Greyed out in spiritual realms */}
-                  <div className={`flex items-start justify-between gap-1 mt-0.5 ${player.realm !== 'human' ? 'opacity-30 pointer-events-none' : ''}`}>
+                  <div className={`flex items-start gap-1 mt-0.5 ${player.realm !== 'human' ? 'opacity-30 pointer-events-none' : ''}`}>
                       <div className="flex-1">
                           <LifeTrack
                               life={player.life}
@@ -1000,10 +1014,14 @@ const HungryGhostGame = () => {
                               gainingDana={player.gainingDana}
                           />
                       </div>
-                      <div className="flex-1">
-                          <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center gap-1">INSIGHT</div>
-                          <div className="transform scale-75 origin-top-left -translate-x-7">
-                              <InsightLotus insight={player.insight} />
+                      <div className="w-32">
+                          <div className="text-[10px] text-gray-500 font-bold mb-0.5 flex items-center justify-center gap-1">
+                              <span className="text-sm">🪷</span>
+                          </div>
+                          <div className="flex justify-start">
+                              <div className="transform scale-75 -ml-20">
+                                  <InsightLotus insight={player.insight} />
+                              </div>
                           </div>
                       </div>
                   </div>
