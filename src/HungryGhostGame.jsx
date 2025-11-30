@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Cloud, Heart, Coins, Zap, Skull, Crown, Ghost, BookOpen, AlertCircle, ArrowRight, User, Sun, Sparkles, ArrowUp, ArrowDown, Move, Moon, SunMedium, Sunset, RotateCcw, Trophy, FastForward, Sunrise } from 'lucide-react';
+import { Cloud, Heart, Ghost, ArrowRight, User, Sparkles, ArrowUp, ArrowDown, Move, Trophy } from 'lucide-react';
 
 const LOCATIONS = [
   { id: 'cave', name: 'Cave', capacity: 1, type: 'meditation' },
@@ -952,9 +952,9 @@ const HungryGhostGame = () => {
   };
 
   const getPhaseIcon = () => {
-      if (phase === 'morning') return <Sunrise size={14} className="text-yellow-600"/>;
-      if (phase === 'afternoon') return <Sun size={14} className="text-orange-500"/>;
-      return <Moon size={14} className="text-indigo-600"/>;
+      if (phase === 'morning') return <span className="text-sm">🌅</span>;
+      if (phase === 'afternoon') return <span className="text-sm">☀️</span>;
+      return <span className="text-sm">🌙</span>;
   };
 
   const ActionButton = ({ label, icon, disabled, onClick, active, mandatory = false }) => (
@@ -1093,7 +1093,7 @@ const HungryGhostGame = () => {
               </div>
 
               <div className="flex gap-4 flex-1 min-h-0">
-                  <div className={`p-3 rounded-xl shadow-sm border-2 transition-colors duration-300 w-52 flex flex-col shrink-0 h-[480px] ${getActionPanelStyle()}`}>
+                  <div className={`p-3 rounded-xl shadow-sm border-2 transition-colors duration-300 w-[230px] flex flex-col shrink-0 h-[480px] ${getActionPanelStyle()}`}>
                       <h3 className={`font-bold text-xs mb-2 pb-1 border-b ${getActionHeaderStyle()} flex justify-between items-center shrink-0`}>
                           <div className="text-center">
                               <div>{currentPlayer.name}</div>
@@ -1108,55 +1108,55 @@ const HungryGhostGame = () => {
                           {mustTakeRobes ? (
                               <div className="flex flex-col items-center justify-center h-full gap-2">
                                   <p className="text-xs text-orange-800 text-center font-bold">You have entered the Temple.</p>
-                                  <ActionButton label="Ordain" onClick={handleBecomeMonk} mandatory={true} icon={<span className="text-sm">🥣</span>} />
+                                  <ActionButton label="Ordain 🥣" onClick={handleBecomeMonk} mandatory={true} icon={<span className="text-sm">🥣</span>} />
                               </div>
                           ) : currentPlayer.realm === 'human' && !showEveningChoice && phase !== 'evening' ? (
                               <>
-                                  <ActionButton label="Move" onClick={toggleMoveMode} active={isMoving} icon={<Move size={14}/>} />
-                                  <ActionButton label="Meditate" onClick={handleMeditate} disabled={isMoving || !currentPlayer.isMeditator} icon={<><ArrowDown size={10}/><Cloud size={12}/></>} />
-                                  <ActionButton label="Good Deed" onClick={handleGoodDeed} disabled={isMoving || currentPlayer.dana < 1 || !canInteract} icon={<><ArrowDown size={10}/><DanaCoin size={10}/><ArrowUp size={10}/>☯</>} />
-                                  <ActionButton label="Bad Deed" onClick={handleBadDeed} disabled={isMoving || !canInteract || currentPlayer.dana >= 10} icon={<><ArrowDown size={10}/>☯<ArrowUp size={10}/><DanaCoin size={10}/></>} />
-                                  <ActionButton label="Alms" onClick={handleAlms} disabled={isMoving || phase !== 'morning' || !currentPlayer.isMonk || currentPlayer.location !== 'town'} icon={<><ArrowUp size={10}/><DanaCoin size={10}/></>} />
+                                  <ActionButton label="Move 🚶" onClick={toggleMoveMode} active={isMoving} icon={<Move size={14}/>} />
+                                  <ActionButton label="Meditate 🧘" onClick={handleMeditate} disabled={isMoving || !currentPlayer.isMeditator} icon={<><ArrowDown size={10}/><Cloud size={12}/></>} />
+                                  <ActionButton label="Good Deed 😇" onClick={handleGoodDeed} disabled={isMoving || currentPlayer.dana < 1 || !canInteract} icon={<><ArrowDown size={10}/><DanaCoin size={10}/><ArrowUp size={10}/><YinYang size={10} filled={true}/></>} />
+                                  <ActionButton label="Bad Deed 😈" onClick={handleBadDeed} disabled={isMoving || !canInteract || currentPlayer.dana >= 10} icon={<><ArrowDown size={10}/><YinYang size={10} filled={true}/><ArrowUp size={10}/><DanaCoin size={10}/></>} />
+                                  <ActionButton label="Alms 🙏" onClick={handleAlms} disabled={isMoving || phase !== 'morning' || !currentPlayer.isMonk || currentPlayer.location !== 'town'} icon={<><ArrowUp size={10}/><DanaCoin size={10}/></>} />
                                   <ActionButton
-                                      label="Skip"
+                                      label="Skip ⏭️"
                                       onClick={advancePhase}
                                       disabled={isMoving}
-                                      icon={<><FastForward size={12}/>{phase === 'morning' ? <Sun size={12} className="text-orange-500"/> : <Moon size={12} className="text-indigo-600"/>}</>}
+                                      icon={<>{phase === 'morning' ? <span className="text-xs">☀️</span> : <span className="text-xs">🌙</span>}</>}
                                   />
                               </>
                           ) : showEveningChoice ? (
                               <>
                                   <ActionButton
-                                      label="Age"
+                                      label="Age 👤→❤️"
                                       onClick={ageNormally}
                                       disabled={currentPlayer.agePosition >= 5}
-                                      icon={<><span className="text-sm">👤</span><ArrowRight size={10}/><span className="text-sm">❤️</span><ArrowDown size={8}/></>}
+                                      icon={<><span className="text-sm">👤</span><ArrowRight size={10}/><Heart size={12} className="text-red-500 fill-red-500"/><ArrowDown size={8}/></>}
                                   />
                                   <ActionButton
-                                      label="Extend"
+                                      label="Extend 👤→🌕"
                                       onClick={payToSurvive}
                                       disabled={currentPlayer.agePosition < 5 || currentPlayer.dana <= 0}
-                                      icon={<><span className="text-sm">👤</span><ArrowRight size={10}/><DanaCoin size={10}/><ArrowDown size={8}/></>}
+                                      icon={<><span className="text-sm">👤</span><ArrowRight size={10}/><DanaCoin size={12}/><ArrowDown size={8}/></>}
                                   />
                                   <ActionButton
-                                      label="Die"
+                                      label="Die 💀🔄"
                                       onClick={chooseToDie}
                                       disabled={currentPlayer.agePosition < 5}
-                                      icon={<><span className="text-sm">💀</span><RotateCcw size={10}/></>}
+                                      icon={<><span className="text-sm">💀</span><span className="text-sm">🔄</span></>}
                                   />
                                   {currentPlayer.agePosition >= 5 && currentPlayer.insight >= WINNING_INSIGHT && (
                                       <>
                                           <ActionButton
-                                              label="Nirvana"
+                                              label="Nirvana 🪷"
                                               onClick={chooseNirvana}
                                               mandatory={true}
                                               icon={<><span className="text-sm">🪷</span><Trophy size={10}/></>}
                                           />
                                           <ActionButton
-                                              label="Bodhisattva"
+                                              label="Bodhisattva 🧘🔄"
                                               onClick={chooseBodhisattva}
                                               mandatory={true}
-                                              icon={<><span className="text-sm">🧘</span><RotateCcw size={10}/></>}
+                                              icon={<><span className="text-sm">🧘</span><span className="text-sm">🔄</span></>}
                                           />
                                       </>
                                   )}
@@ -1168,7 +1168,7 @@ const HungryGhostGame = () => {
                                           <p className="text-center text-xs font-bold text-green-600 mb-1">🏆 ENLIGHTENMENT ACHIEVED! 🏆</p>
                                           <p className="text-center text-[10px] text-gray-600 mb-2">You have broken the cycle of Samsara</p>
                                           <ActionButton
-                                              label="Nirvana"
+                                              label="Nirvana 🪷"
                                               onClick={confirmReincarnation}
                                               mandatory={true}
                                               icon={<span className="text-sm">🪷</span>}
@@ -1183,10 +1183,10 @@ const HungryGhostGame = () => {
                                               {pendingReincarnation.nextRole.isGreedy && <span className="block text-red-600">as Greedy</span>}
                                           </p>
                                           <ActionButton
-                                              label="Reincarnate"
+                                              label="Reincarnate 💀🔄"
                                               onClick={confirmReincarnation}
                                               mandatory={true}
-                                              icon={<><Skull size={12}/><RotateCcw size={12}/></>}
+                                              icon={<><span className="text-sm">💀</span><span className="text-sm">🔄</span></>}
                                           />
                                       </>
                                   )}
