@@ -183,10 +183,10 @@ export const LifeTrack = ({ player, animations = {} }) => {
     const LIFE_SLOTS = 5;
     const DANA_SLOTS = 10;
 
-    const getHeartColor = () => {
-        if (player.color.includes('blue')) return "text-blue-500 fill-blue-500";
-        if (player.color.includes('green')) return "text-green-500 fill-green-500";
-        if (player.color.includes('red')) return "text-red-500 fill-red-500";
+    const getHeartColor = (playerColor) => {
+        if (playerColor.includes('blue')) return "text-blue-500 fill-blue-500";
+        if (playerColor.includes('green')) return "text-green-500 fill-green-500";
+        if (playerColor.includes('red')) return "text-red-500 fill-red-500";
         return "text-red-500 fill-red-500";
     };
 
@@ -194,10 +194,10 @@ export const LifeTrack = ({ player, animations = {} }) => {
     const removingHeart = animations[`${player.id}_removingHeart`];
     const removingCoin = animations[`${player.id}_removingCoin`];
 
-    // Pure rendering logic based on player state
-    const renderSlot = (position) => {
-        const isHeadPosition = player.agePosition === position;
-        const hasDanaPlaced = player.placedDana && player.placedDana.includes(position);
+    // Pure rendering logic - all state explicitly passed as parameters
+    const renderSlot = (position, playerState, animationState) => {
+        const isHeadPosition = playerState.agePosition === position;
+        const hasDanaPlaced = playerState.placedDana && playerState.placedDana.includes(position);
 
         if (position === 0) {
             // Aging position (0)
@@ -214,7 +214,7 @@ export const LifeTrack = ({ player, animations = {} }) => {
             );
         } else if (position >= 1 && position <= LIFE_SLOTS) {
             // Life positions (1-5): show hearts or collected state
-            const heartCollected = player.agePosition >= position; // Head has passed this position
+            const heartCollected = playerState.agePosition >= position; // Head has passed this position
 
             return (
                 <div key={`life-${position}`} className="relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner">
@@ -222,7 +222,7 @@ export const LifeTrack = ({ player, animations = {} }) => {
                         <span className="absolute z-20 text-sm">👤</span>
                     )}
                     {!heartCollected && !isHeadPosition && !hasDanaPlaced && (
-                        <Heart size={12} className={`${getHeartColor()} drop-shadow-sm ${removingHeart === position ? 'animate-heart-removal' : ''}`} />
+                        <Heart size={12} className={`${getHeartColor(playerState.color)} drop-shadow-sm ${animationState.removingHeart === position ? 'animate-heart-removal' : ''}`} />
                     )}
                     {hasDanaPlaced && !isHeadPosition && (
                         <DanaCoin size={12} />
@@ -235,12 +235,12 @@ export const LifeTrack = ({ player, animations = {} }) => {
         } else {
             // Dana positions (6-15): show filled/empty based on dana count
             const danaIndex = position - LIFE_SLOTS - 1; // Convert to 0-9 index
-            const hasCoin = danaIndex < player.dana;
+            const hasCoin = danaIndex < playerState.dana;
 
             return (
                 <div key={`dana-${danaIndex}`} className="relative w-5 h-5 rounded flex items-center justify-center bg-stone-300/50 border border-stone-400/50 shadow-inner">
                     {hasCoin ? (
-                        <DanaCoin size={16} className={removingCoin === danaIndex ? 'animate-coin-removal' : ''} />
+                        <DanaCoin size={16} className={animationState.removingCoin === danaIndex ? 'animate-coin-removal' : ''} />
                     ) : (
                         <DanaCoin size={16} faded={true} />
                     )}
@@ -273,8 +273,8 @@ export const LifeTrack = ({ player, animations = {} }) => {
             </div>
 
             <div className="flex gap-0.5 items-center bg-stone-200/50 p-0.5 rounded-lg border border-stone-300/50 w-fit">
-                {/* Render all 16 slots (0 + 5 life + 10 dana) */}
-                {Array.from({ length: 16 }, (_, i) => renderSlot(i))}
+                {/* Render all 16 slots (0 + 5 life + 10 dana) - state passed explicitly */}
+                {Array.from({ length: 16 }, (_, i) => renderSlot(i, player, { removingHeart, removingCoin }))}
             </div>
         </div>
     );
