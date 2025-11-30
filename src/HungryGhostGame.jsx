@@ -1061,7 +1061,7 @@ const HungryGhostGame = () => {
                                   <ActionButton
                                       label="Die"
                                       onClick={chooseToDie}
-                                      disabled={currentPlayer.agePosition < 5 && currentPlayer.dana > 0}
+                                      disabled={currentPlayer.agePosition < 5}
                                       icon={<><span className="text-sm">💀</span><RotateCcw size={10}/></>}
                                   />
                                   {currentPlayer.agePosition >= 5 && currentPlayer.insight >= WINNING_INSIGHT && (
