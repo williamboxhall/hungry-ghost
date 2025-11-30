@@ -41,21 +41,17 @@ const HungryGhostGame = () => {
     }
   }, [gameState.logs]);
 
-  // Auto-advance spiritual realm players to evening
+  // Auto-advance spiritual realm players to evening instantly
   useEffect(() => {
     const currentPlayer = gameController.getCurrentPlayer();
     if (currentPlayer.realm !== 'human' && gameState.phase !== 'evening') {
-      const timeoutId = setTimeout(() => {
-        if (gameState.phase === 'morning') {
-          gameController.advancePhase();
-          syncGameState();
-        } else if (gameState.phase === 'afternoon') {
-          gameController.advancePhase();
-          syncGameState();
-        }
-      }, 1000); // Small delay to show the auto-advance message
-
-      return () => clearTimeout(timeoutId);
+      if (gameState.phase === 'morning') {
+        gameController.advancePhase();
+        syncGameState();
+      } else if (gameState.phase === 'afternoon') {
+        gameController.advancePhase();
+        syncGameState();
+      }
     }
   }, [gameState.phase]);
 
@@ -161,6 +157,8 @@ const HungryGhostGame = () => {
   const othersHere = getPlayersAt(currentPlayer.location, gameState.players).filter(p => p.id !== currentPlayer.id);
   const canInteract = currentPlayer.location === 'town' || othersHere.length > 0;
   const mustTakeRobes = currentPlayer.realm === 'human' && currentPlayer.location === 'temple' && !currentPlayer.isMonk && !gameState.showEveningChoice;
+  const availableMeditationSlots = gameController.getAvailableMeditationSlots(currentPlayer.location);
+  const canMeditate = !gameState.isMoving && currentPlayer.isMeditator && availableMeditationSlots > 0;
 
   const renderLocation = (loc, gameStateData, currentPlayerData, locations) => {
     const getPlayersAtLocation = (locId) => gameStateData.players.filter(p => p.location === locId && p.realm === 'human');
@@ -256,7 +254,7 @@ const HungryGhostGame = () => {
                 ) : currentPlayer.realm === 'human' && !gameState.showEveningChoice && gameState.phase !== 'evening' ? (
                   <>
                     <ActionButton label="Move" onClick={() => handleAction('toggleMoveMode')} active={gameState.isMoving} icon={<Move size={14}/>} />
-                    <ActionButton label="Meditate" onClick={() => handleAction('meditate')} disabled={gameState.isMoving || !currentPlayer.isMeditator} icon={<><ArrowDown size={10}/><Cloud size={12}/></>} />
+                    <ActionButton label="Meditate" onClick={() => handleAction('meditate')} disabled={!canMeditate} icon={<><ArrowDown size={10}/><Cloud size={12}/></>} />
                     <ActionButton label="Good Deed" onClick={() => handleAction('goodDeed')} disabled={gameState.isMoving || currentPlayer.dana < 1 || !canInteract} icon={<><ArrowDown size={10}/><DanaCoin size={10}/><ArrowUp size={10}/><YinYang size={10} filled={true}/></>} />
                     <ActionButton label="Bad Deed" onClick={() => handleAction('badDeed')} disabled={gameState.isMoving || !canInteract || currentPlayer.dana >= 10} icon={<><ArrowDown size={10}/><YinYang size={10} filled={true}/><ArrowUp size={10}/><DanaCoin size={10}/></>} />
                     <ActionButton label="Alms" onClick={() => handleAction('alms')} disabled={gameState.isMoving || gameState.phase !== 'morning' || !currentPlayer.isMonk || currentPlayer.location !== 'town'} icon={<><ArrowUp size={10}/><DanaCoin size={10}/></>} />

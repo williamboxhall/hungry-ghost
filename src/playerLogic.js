@@ -94,7 +94,7 @@ export const movePlayerAge = (player, newAge) => ({
 
 export const clearPlayerAgeTrack = (player) => ({
   ...player,
-  age: -1
+  age: 0
 });
 
 // Merit operations (with bounds checking)
@@ -181,7 +181,7 @@ export const createPlayerReincarnation = (player, realmData) => {
     isGreedy: nextRole.isGreedy || false,
     isMeditator: nextRole.isMeditator || false,
     merit: newMerit,
-    age: -1 // Start before position 0
+    age: 0 // Start at position 0
   };
 };
 

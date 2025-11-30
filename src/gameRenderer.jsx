@@ -209,20 +209,23 @@ export const LifeTrack = ({ player, previousPlayer = null }) => {
     };
 
 
-    const calculateTrackState = (age, dana) => {
+    const calculateTrackState = (age, dana, realm) => {
         const trackState = new Array(16);
+
+        // In spiritual realms, everything should be sockets (inactive)
+        const isInSpiritualRealm = realm === 'heaven' || realm === 'hell';
 
         // Fill positions 0-15 based on age and dana
         for (let position = 0; position <= 15; position++) {
-            if (position === age) {
-                // Head is at this position
+            if (position === 0) {
+                // Position 0 is special: either head or head_socket, never anything else
+                trackState[position] = (age === 0 && !isInSpiritualRealm) ? 'head' : 'head_socket';
+            } else if (position === age && !isInSpiritualRealm) {
+                // Head is at this position (only in human realm)
                 trackState[position] = 'head';
             } else if (position < age) {
                 // Positions to the left of head
-                if (position === 0) {
-                    // First socket
-                    trackState[position] = 'head_socket';
-                } else if (position >= 1 && position <= 5) {
+                if (position >= 1 && position <= 5) {
                     // Life positions to the left of head (1-5): empty heart sockets
                     trackState[position] = 'heart_socket';
                 } else {
@@ -232,19 +235,23 @@ export const LifeTrack = ({ player, previousPlayer = null }) => {
             } else if (position > age) {
                 // Positions to the right of head
                 if (position >= 1 && position <= 5) {
-                    // Life positions to the right of head (1-5): solid hearts to collect
-                    trackState[position] = 'heart';
+                    // Life positions: solid hearts in human realm, sockets in spiritual realms
+                    trackState[position] = isInSpiritualRealm ? 'heart_socket' : 'heart';
                 } else {
-                    // determine if coin or coin_socket based on amount of dana
-                    const danaStart = Math.max(age, 6);
-                    const slotIndex = position - danaStart;
-
-                    if (slotIndex >= 0 && slotIndex < dana) {
-                        // Dana coin is placed here
-                        trackState[position] = 'coin';
-                    } else {
-                        // Empty coin socket
+                    // Dana positions: coins/sockets based on dana in human realm, all sockets in spiritual realms
+                    if (isInSpiritualRealm) {
                         trackState[position] = 'coin_socket';
+                    } else {
+                        const danaStart = Math.max(age, 6);
+                        const slotIndex = position - danaStart;
+
+                        if (slotIndex >= 0 && slotIndex < dana) {
+                            // Dana coin is placed here
+                            trackState[position] = 'coin';
+                        } else {
+                            // Empty coin socket
+                            trackState[position] = 'coin_socket';
+                        }
                     }
                 }
             }
@@ -254,14 +261,14 @@ export const LifeTrack = ({ player, previousPlayer = null }) => {
     };
 
     // Calculate track states for current and previous player
-    const currentTrackState = calculateTrackState(player.age, player.dana);
-    const previousTrackState = previousPlayer ? calculateTrackState(previousPlayer.age, previousPlayer.dana) : null;
+    const currentTrackState = calculateTrackState(player.age, player.dana, player.realm);
+    const previousTrackState = previousPlayer ? calculateTrackState(previousPlayer.age, previousPlayer.dana, previousPlayer.realm) : null;
 
     // Pure rendering logic - render each slot based on pre-calculated state only
     const renderSlot = (currentSlotState, previousSlotState) => {
         // Check if animation needed (slot changed from previous state)
         const isAnimating = previousSlotState && currentSlotState !== previousSlotState;
-        const isHeartAnimation = previousSlotState === 'heart' && currentSlotState === 'heart_socket';
+        const isHeartAnimation = previousSlotState === 'heart' && (currentSlotState === 'heart_socket' || currentSlotState === 'head');
         const isCoinAnimation = previousSlotState === 'coin' && currentSlotState === 'coin_socket';
 
         return (
@@ -277,6 +284,10 @@ export const LifeTrack = ({ player, previousPlayer = null }) => {
                 )}
                 {currentSlotState === 'heart_socket' && (
                     <Heart size={12} className="text-stone-400 opacity-50" strokeWidth={1.5} />
+                )}
+                {/* Show animated heart when it's being removed by aging (heart -> head transition) */}
+                {isHeartAnimation && previousSlotState === 'heart' && currentSlotState === 'head' && (
+                    <Heart size={12} className={`${getHeartColor(player.color)} drop-shadow-sm animate-heart-removal absolute z-10`} />
                 )}
                 {currentSlotState === 'coin' && (
                     <DanaCoin size={16} className={isCoinAnimation ? 'animate-coin-removal' : ''} />
@@ -451,6 +462,9 @@ export const PlayerCard = ({ player, isActive, previousPlayer = null }) => {
 
 // Location Renderer
 export const LocationCard = ({ location, playersHere, isCurrentLoc, isMoveTarget, isDimmed, isNormal, onLocationClick }) => {
+    const meditatingPlayers = playersHere.filter(p => p.isMeditating);
+    const nonMeditatingPlayers = playersHere.filter(p => !p.isMeditating);
+
     return (
       <div onClick={() => onLocationClick(location.id)} className={`relative flex flex-col items-center p-2 border-2 rounded-lg w-28 h-28 shrink-0 transition-all duration-300 ${isCurrentLoc ? 'border-yellow-400 bg-yellow-50 shadow-md z-10 scale-105' : ''} ${isMoveTarget ? 'border-green-400 bg-green-50 cursor-pointer shadow-lg scale-105 z-10 animate-pulse' : ''} ${isDimmed ? 'border-gray-200 bg-gray-100 opacity-40 grayscale' : ''} ${isNormal && !isCurrentLoc ? 'border-gray-200 bg-white opacity-90' : ''}`}>
         <div className="absolute top-2 w-full text-center">
@@ -459,8 +473,29 @@ export const LocationCard = ({ location, playersHere, isCurrentLoc, isMoveTarget
                 {location.id === 'forest' ? 'Max 2' : location.id === 'cave' ? 'Max 1' : ''}
             </div>
         </div>
+
+        {/* Meditation slots (middle area) */}
+        {location.meditationSlots > 0 && (
+            <div className="absolute top-12 w-full flex justify-center">
+                <div className="flex gap-0.5">
+                    {[...Array(location.meditationSlots)].map((_, i) => {
+                        const meditator = meditatingPlayers[i];
+                        return (
+                            <div key={i} className="w-4 h-4 rounded-full border border-blue-300 bg-blue-50 flex items-center justify-center">
+                                {meditator ? (
+                                    <div className={`w-2 h-2 rounded-full ${meditator.color} border border-white`}></div>
+                                ) : (
+                                    <span className="text-[8px] text-blue-400">🧘</span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        )}
+
         <div className="absolute bottom-2 w-full flex justify-center gap-1 px-1">
-            {playersHere.map(p => (<Meeple key={p.id} player={p} size="small" />))}
+            {nonMeditatingPlayers.map(p => (<Meeple key={p.id} player={p} size="small" />))}
         </div>
       </div>
     );

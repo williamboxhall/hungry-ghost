@@ -9,10 +9,10 @@ export const WINNING_INSIGHT = 7;
 export const INITIAL_LIFE = 5;
 
 export const LOCATIONS = [
-  { id: 'cave', name: 'Cave', capacity: 1, type: 'meditation' },
-  { id: 'forest', name: 'Forest', capacity: 2, type: 'meditation' },
-  { id: 'town', name: 'Town', capacity: 99, type: 'social' },
-  { id: 'temple', name: 'Temple', capacity: 99, type: 'mixed' }
+  { id: 'cave', name: 'Cave', capacity: 1, type: 'meditation', meditationSlots: 1 },
+  { id: 'forest', name: 'Forest', capacity: 2, type: 'meditation', meditationSlots: 2 },
+  { id: 'town', name: 'Town', capacity: 99, type: 'social', meditationSlots: 0 },
+  { id: 'temple', name: 'Temple', capacity: 99, type: 'mixed', meditationSlots: 3 }
 ];
 
 // Initial player state factory
@@ -33,6 +33,7 @@ export const createInitialPlayer = (id, name, color) => ({
   isMeditator: false,
   isTeacher: false,
   isGreedy: false,
+  isMeditating: false,
   age: 0
 });
 
@@ -206,7 +207,7 @@ export const executeReincarnation = (player, nextRealm, nextRole, startingLife) 
     isGreedy: nextRole.isGreedy,
     isMeditator: nextRole.isMeditator,
     merit: newMerit,
-    age: -1 // Start before position 0 so there's a heart to knock off
+    age: 0 // Start at position 0
   };
 };
 
@@ -225,7 +226,7 @@ export const createBodhisattvaReincarnation = (player) => {
     isGreedy: false,
     isMeditator: true,
     merit: player.merit, // Keep current Merit instead of resetting to 0
-    age: -1
+    age: 0
   };
 };
 
@@ -380,10 +381,10 @@ export class GameController {
     const currentPlayer = this.getCurrentPlayer();
     let greedyLog = null;
 
-    // Update current player location
+    // Update current player location and clear meditation state
     this.state.players = this.state.players.map(p => {
       if (p.id === this.state.currentPlayerIdx) {
-        let next = createMoveAction(p, targetLoc);
+        let next = { ...createMoveAction(p, targetLoc), isMeditating: false };
         // Greedy Logic check
         if (p.isGreedy && targetLoc === 'town') {
           greedyLog = { message: `${p.name} (Greedy) stole Dana +1 entering Town for Merit -1`, playerId: p.id };
@@ -396,7 +397,15 @@ export class GameController {
     const me = this.state.players.find(p => p.id === this.state.currentPlayerIdx);
 
     // Apply location interactions
-    this.state.players = applyLocationInteractions(this.state.players, me, targetLoc);
+    const locationResult = applyLocationInteractions(this.state.players, me, targetLoc);
+    this.state.players = locationResult.players;
+
+    // Log interaction messages
+    locationResult.interactions.forEach(interaction => {
+      if (interaction.message) {
+        this.addLog(interaction.message, "player", interaction.student.id);
+      }
+    });
 
     if (greedyLog) {
       this.addLog(greedyLog.message, "player", greedyLog.playerId);
@@ -406,12 +415,39 @@ export class GameController {
     this.addLog(`${currentPlayer.name} moved to ${targetLoc}.`, "player", currentPlayer.id);
   }
 
+  // Check available meditation slots at a location
+  getAvailableMeditationSlots(locationId) {
+    const location = LOCATIONS.find(l => l.id === locationId);
+    if (!location || location.meditationSlots === 0) return 0;
+
+    const playersAtLocation = getPlayersAt(this.state.players, locationId);
+    const meditatingPlayers = playersAtLocation.filter(p => p.isMeditating);
+
+    return location.meditationSlots - meditatingPlayers.length;
+  }
+
   handleMeditate() {
     const currentPlayer = this.getCurrentPlayer();
     const loc = LOCATIONS.find(l => l.id === currentPlayer.location);
-    const playersAtLocation = getPlayersAt(this.state.players, loc.id);
 
-    const newPlayer = createMeditateAction(currentPlayer, loc, playersAtLocation);
+    // Check if meditation is possible at this location
+    if (loc.meditationSlots === 0) {
+      this.addLog(`${currentPlayer.name} cannot meditate in ${loc.name} - no meditation spots available`, "player", currentPlayer.id);
+      return;
+    }
+
+    // Check if there are available meditation slots
+    const availableSlots = this.getAvailableMeditationSlots(loc.id);
+    if (availableSlots === 0) {
+      this.addLog(`${currentPlayer.name} cannot meditate - all meditation slots occupied in ${loc.name}`, "player", currentPlayer.id);
+      return;
+    }
+
+    const playersAtLocation = getPlayersAt(this.state.players, loc.id);
+    const newPlayer = {
+      ...createMeditateAction(currentPlayer, loc, playersAtLocation),
+      isMeditating: true
+    };
     let delusionDrop = 0;
     if (loc.id === 'temple') delusionDrop = 1 + playersAtLocation.length - 1;
     if (loc.id === 'forest') delusionDrop = 1;
@@ -420,12 +456,12 @@ export class GameController {
     this.updatePlayer(currentPlayer.id, newPlayer);
 
     if (newPlayer.delusion < currentPlayer.delusion) {
-      this.addLog(`${currentPlayer.name} meditated for Delusion -${delusionDrop}`, "player", currentPlayer.id);
+      this.addLog(`${currentPlayer.name} meditated for Delusion -${delusionDrop} (Delusion: ${newPlayer.delusion})`, "player", currentPlayer.id);
       if (newPlayer.delusion === 0 && currentPlayer.delusion > 0) {
         this.addLog(`${currentPlayer.name} has cleared all delusion!`, "player", currentPlayer.id);
       }
     } else {
-      this.addLog(`${currentPlayer.name} meditated in clarity for Insight +${delusionDrop}`, "player", currentPlayer.id);
+      this.addLog(`${currentPlayer.name} meditated in clarity for Insight +${delusionDrop} (Insight: ${newPlayer.insight})`, "player", currentPlayer.id);
     }
 
     this.advancePhase();
@@ -435,7 +471,7 @@ export class GameController {
     const currentPlayer = this.getCurrentPlayer();
     const others = getPlayersAt(this.state.players, currentPlayer.location).filter(p => p.id !== currentPlayer.id);
 
-    const newPlayer = createGoodDeedAction(currentPlayer);
+    const newPlayer = { ...createGoodDeedAction(currentPlayer), isMeditating: false };
     this.updatePlayer(currentPlayer.id, newPlayer);
 
     if (others.length > 0 && currentPlayer.location !== 'town') {
@@ -450,10 +486,10 @@ export class GameController {
         this.updatePlayer(receiver.id, { gainingDana: false });
       }, 600);
 
-      this.addLog(`${currentPlayer.name} gave Dana -1 to ${receiver.name} for Merit +1`, "player", currentPlayer.id);
-      this.addLog(`${receiver.name} received Dana +1 from ${currentPlayer.name}'s good deed`, "player", receiver.id);
+      this.addLog(`${currentPlayer.name} gave Dana -1 to ${receiver.name} for Merit +1 (Dana: ${newPlayer.dana}, Merit: ${newPlayer.merit})`, "player", currentPlayer.id);
+      this.addLog(`${receiver.name} received Dana +1 from ${currentPlayer.name}'s good deed (Dana: ${newReceiver.dana})`, "player", receiver.id);
     } else {
-      this.addLog(`${currentPlayer.name} helped someone in town with Dana -1 for Merit +1`, "player", currentPlayer.id);
+      this.addLog(`${currentPlayer.name} helped someone in town with Dana -1 for Merit +1 (Dana: ${newPlayer.dana}, Merit: ${newPlayer.merit})`, "player", currentPlayer.id);
     }
 
     this.advancePhase();
@@ -464,7 +500,7 @@ export class GameController {
     const victimsWithDana = getPlayersAt(this.state.players, currentPlayer.location).filter(p => p.id !== currentPlayer.id && p.dana > 0);
     const townBonus = currentPlayer.location === 'town' ? 1 : 0;
 
-    const newPlayer = createBadDeedAction(currentPlayer, victimsWithDana, townBonus);
+    const newPlayer = { ...createBadDeedAction(currentPlayer, victimsWithDana, townBonus), isMeditating: false };
     const totalGain = victimsWithDana.length + townBonus;
 
     // Atomic update for bad deed
@@ -494,11 +530,11 @@ export class GameController {
       if (townBonus > 0) sources.push("Town");
       victimsWithDana.forEach(victim => sources.push(victim.name));
 
-      this.addLog(`${currentPlayer.name} committed a bad deed and stole Dana +${totalStolen} (${sources.join(", ")}) for Merit -${totalStolen}`, "player", currentPlayer.id);
+      this.addLog(`${currentPlayer.name} committed a bad deed and stole Dana +${totalStolen} (${sources.join(", ")}) for Merit -${totalStolen} (Dana: ${newPlayer.dana}, Merit: ${newPlayer.merit})`, "player", currentPlayer.id);
 
       // Log individual victim losses
       victimsWithDana.forEach(victim => {
-        this.addLog(`${victim.name} lost Dana -1 from ${currentPlayer.name}'s theft`, "player", victim.id);
+        this.addLog(`${victim.name} lost Dana -1 from ${currentPlayer.name}'s theft (Dana: ${victim.dana - 1})`, "player", victim.id);
       });
     } else {
       this.addLog(`${currentPlayer.name} committed a bad deed but found nothing to steal for Merit -0`, "player", currentPlayer.id);
@@ -513,6 +549,7 @@ export class GameController {
 
     this.updatePlayer(currentPlayer.id, {
       ...newPlayer,
+      isMeditating: false,
       gainingDana: true
     });
 
@@ -521,7 +558,7 @@ export class GameController {
       this.updatePlayer(currentPlayer.id, { gainingDana: false });
     }, 600);
 
-    this.addLog(`${currentPlayer.name} collected Dana +1 from alms`, "player", currentPlayer.id);
+    this.addLog(`${currentPlayer.name} collected Dana +1 from alms (Dana: ${newPlayer.dana})`, "player", currentPlayer.id);
     this.advancePhase();
   }
 
@@ -531,7 +568,7 @@ export class GameController {
     const newPlayer = createMonkAction(currentPlayer);
 
     this.updatePlayer(currentPlayer.id, newPlayer);
-    this.addLog(`${currentPlayer.name} ordained as a Monk (lost all Dana -${danaLost})`, "player", currentPlayer.id);
+    this.addLog(`${currentPlayer.name} ordained as a Monk (lost all Dana -${danaLost}, Dana: 0)`, "player", currentPlayer.id);
   }
 
   handleEveningArrival() {
@@ -548,12 +585,12 @@ export class GameController {
       if (p.realm === 'heaven') {
         newDelusion = Math.max(0, p.delusion - 1);
         newMerit = Math.max(0, p.merit - 1);
-        this.addLog(`${p.name} heavenly existence: Delusion -1, Merit -1`, "neutral", p.id);
+        this.addLog(`${p.name} heavenly existence: Delusion -1, Merit -1 (Delusion: ${newDelusion}, Merit: ${newMerit})`, "neutral", p.id);
       } else if (p.realm === 'hell') {
         newDelusion = p.delusion + 1;
         newMerit = Math.min(0, p.merit + 1);
         newLife = Math.abs(newMerit);
-        this.addLog(`${p.name} hellish suffering: Delusion +1, Merit +1`, "neutral", p.id);
+        this.addLog(`${p.name} hellish suffering: Delusion +1, Merit +1 (Delusion: ${newDelusion}, Merit: ${newMerit})`, "neutral", p.id);
       }
 
       if (p.realm === 'human') {
@@ -582,7 +619,7 @@ export class GameController {
 
     const logs = [{
       message: heartCollected
-        ? `${currentPlayer.name} aged and collected a heart from position ${newPosition}`
+        ? `${currentPlayer.name} aged and removed a heart from position ${newPosition} (Life: ${newPlayer.life})`
         : `${currentPlayer.name} aged through empty position ${newPosition}`,
       type: 'player',
       playerId: currentPlayer.id
@@ -609,7 +646,7 @@ export class GameController {
     }];
 
     const logs = [{
-      message: `${currentPlayer.name} paid Dana -1, placed it at position ${currentPos}, and aged to position ${newPosition}`,
+      message: `${currentPlayer.name} paid Dana -1, placed it at position ${currentPos}, and aged to position ${newPosition} (Dana: ${newPlayer.dana})`,
       type: 'player',
       playerId: currentPlayer.id
     }];
