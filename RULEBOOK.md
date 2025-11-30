@@ -50,7 +50,9 @@ In each of these two phases, the active player performs **one** voluntary action
 
 The day ends and the toll of existence is paid.
 
-**Remove 1 heart, or if no hearts remaining, optionally spend 1 Dana in place of a heart. If no heart or Dana was spent, the player dies and reincarnates** (see *Reincarnation*).
+**Remove 1 heart. If no hearts remaining, you may optionally spend 1 Dana to gain 1 temporary life (until the next evening). If no heart or Dana was spent, the player dies and reincarnates** (see *Reincarnation*).
+
+*Note: Dana can only provide temporary survival - it does not restore permanent life. Players with temporary life from Dana payment must either restore actual life or face death again the following evening.*
 
 ## **Player States & Passive Effects**
 
