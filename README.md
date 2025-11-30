@@ -2,6 +2,10 @@
 
 A web-based Buddhist-themed board game prototype built with React. Players navigate through different realms (human, heaven, hell) accumulating merit and karma, seeking spiritual awakening through meditation and moral choices.
 
+## 🎮 [Play the Game](https://william.boxhall.github.io/hungry-ghost/)
+
+Click the link above to play the game directly in your browser - no installation required!
+
 ## Features
 
 - **Multi-realm gameplay**: Human, Heaven, and Hell realms with unique mechanics
@@ -42,6 +46,22 @@ npm run lint
 ```
 
 The development server runs on `http://localhost:5173` by default.
+
+## Deployment
+
+The game is automatically deployed to GitHub Pages when changes are pushed to the main branch. The deployment:
+
+- **Live Game**: [https://william.boxhall.github.io/hungry-ghost/](https://william.boxhall.github.io/hungry-ghost/)
+- **Auto-deployment**: GitHub Actions builds and deploys on every push to main
+- **Static hosting**: Built with Vite, runs entirely in the browser (no server required)
+
+### Manual deployment
+```bash
+# Build the static files
+npm run build
+
+# The dist/ folder contains the deployable static site
+```
 
 ## Technology Stack
 
