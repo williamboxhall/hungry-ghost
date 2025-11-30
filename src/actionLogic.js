@@ -15,7 +15,8 @@ import {
   canPlayerCollectAlms,
   isPlayerAtAgeLimit,
   canPlayerExtendLife,
-  getPlayersAtLocation
+  getPlayersAtLocation,
+  getMaxDana
 } from './playerLogic.js';
 
 import {
@@ -73,7 +74,7 @@ export const canTakeAction = (player, action, gameState) => {
     case ACTION_TYPES.BAD_DEED:
       if (phase === 'evening') return { allowed: false, reason: 'Cannot perform bad deeds during evening' };
       if (isMoving) return { allowed: false, reason: 'Cannot perform bad deeds while in move mode' };
-      if (player.dana >= 10) return { allowed: false, reason: 'Already have maximum dana' };
+      if (player.dana >= getMaxDana(player)) return { allowed: false, reason: 'Already have maximum dana' };
 
       const canSteal = player.location === 'town' ||
         getPlayersAtLocation(players, player.location).some(p => p.id !== player.id && p.dana > 0);

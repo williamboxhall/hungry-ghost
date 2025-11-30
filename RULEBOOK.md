@@ -13,7 +13,7 @@ Each player tracks the following on their board:
 * **Merit ☯️:** Karmic balance (-5 to +5). Starts at 0. Gained through Good Deeds and lost through Bad Deeds. Carries over through reincarnations.
 * **Life ❤️:** Hearts remaining on the aging track. Your head 👤 starts at position 0 and moves through positions 1-5, removing ❤️ along the way. When all ❤️ are gone, you must either extend life with Dana 🌕 or die. Resets to 5 when reincarnating in the Human Realm, otherwise bound to ☯️ in spiritual realms.
 * **Dana 🌕:** Currency / material resource used to perform Good Deeds or extend survival on the aging track. Resets to 0 upon death.
-* **Delusion ☁️:** Obscurations to clarity. Starts at 30. Must be reduced to 0 before Insight can be gained. Increases in Hell and decreases in Heaven. Carries over through reincarnations.
+* **Delusion ☁️:** Obscurations to clarity. Starts at 30 (maximum). Must be reduced to 0 before Insight can be gained. Increases in Hell and decreases in Heaven, but cannot exceed the starting maximum of 30. Carries over through reincarnations.
 * **Insight 🪷:** Spiritual understanding. Gained only after ☁️ is cleared. Resets to 0 upon death.
 
 ### **Locations (Human Realm)**
@@ -71,31 +71,35 @@ The day ends and the active player matures by choosing one of these options:
 * **Greedy 👹:** (Reincarnated from Hell).
   * **Compulsion:** Automatically performs a Bad Deed when entering 🏘️ or when other players enter the Greedy's location. Only steals from players/Town that have 🌕 available. Always steals from Town (which acts as an NPC with unlimited 🌕).
 
-## **Spiritual Realms (Waiting Areas)**
+## **Spiritual Realms**
 
-If a player is not in the Human Realm, they skip the 🌅/☀️ actions and simply resolve the 🌙 effects until rebirth.
+Players in spiritual realms follow a two-phase turn structure similar to the Human Realm.
 
-**Player Board Changes:** In spiritual realms, the ❤️/🌕 track is out of play and ❤️ is instead represented by colored hearts placed directly on the ☯️ slider. ❤️ appear from 0 toward your ☯️ value (Heaven: positive direction, Hell: negative direction). As ☯️ changes, ❤️ are added or removed accordingly. 🌕 plays no role in spiritual realms.
+**Player Board Changes:** In spiritual realms, the ❤️/🌕 track is out of play and ❤️ is instead represented by colored hearts placed directly on the ☯️ slider. ❤️appear between 1 and your karma position in Heaven, and between -1 and your karma position in Heaven. As ☯️ moves towards zero, ❤️ are removed accordingly. 🌕 plays no role in spiritual realms.
 
 ### **Heaven Realm 🪽**
 
 * **Entry Condition:** Die with **Positive (+) ☯️**.
-* **Status:** You exist in bliss. Take on Teacher 👨‍🏫 status, ❤️ is permanently bound to ☯️ value.
-* **Evening 🌙 Effect:** -1 ☁️, -1 ☯️ (❤️ automatically decreases with ☯️).
-* **Rebirth:** When ☯️/❤️ reaches 0, reincarnate in the Human Realm as a **Teacher 👨‍🏫**.
+* **Status:** You exist in bliss. Take on Teacher 👨‍🏫 status, ❤️ fills positions +1 to +☯️ value.
+* **Morning 🌅 Action - Bliss:** -1 ☁️ (minimum 0).
+* **Evening 🌙 Action:**
+  * **Age:** If ❤️ remains (☯️ > 0), -1 ☯️ and lose 1 ❤️.
+  * **Die:** If no ❤️ remain (☯️ = 0), reincarnate in the Human Realm as a **Teacher 👨‍🏫**.
 
 ### **Hell Realm 🔥**
 
 * **Entry Condition:** Die with **Negative (-) ☯️**.
-* **Status:** You exist in suffering. Take on Greedy 👹 status, ❤️ is permanently bound to absolute ☯️ value.
-* **Evening 🌙 Effect:** +1 ☁️, +1 ☯️ toward 0 (❤️ automatically adjusts with ☯️: ❤️ = |☯️|).
-* **Rebirth:** When ☯️ reaches 0 (❤️ also 0), reincarnate in the Human Realm as **Greedy 👹**.
+* **Status:** You exist in suffering. Take on Greedy 👹 status, ❤️ fills positions -1 to -|☯️| value.
+* **Morning 🌅 Action - Agony:** +1 ☁️ (maximum 30).
+* **Evening 🌙 Action:**
+  * **Age:** If ❤️ remains (☯️ < 0), +1 ☯️ toward 0 and lose 1 ❤️.
+  * **Die:** If no ❤️ remain (☯️ = 0), reincarnate in the Human Realm as **Greedy 👹**.
 
 ## **Death & Reincarnation 💀🔄**
 
 When a player dies in the Human Realm:
 
 **Judge ☯️:**
-    * **Positive:** Immediately reincarnate in **Heaven 🪽**. 🌕 and 🪷 are lost, ❤️ fills from 0 up to your ☯️ indicator. ☁️ remains unchanged.
-    * **Negative:** Immediately reincarnate in **Hell 🔥**. 🌕 and 🪷 are lost, ❤️ fills from 0 up to your ☯️ indicator. ☁️ remains unchanged.
+    * **Positive:** Immediately reincarnate in **Heaven 🪽**. 🌕 and 🪷 are lost, ❤️ fills positions +1 up to your ☯️ value (health = Merit). ☁️ remains unchanged.
+    * **Negative:** Immediately reincarnate in **Hell 🔥**. 🌕 and 🪷 are lost, ❤️ fills positions -1 down to your ☯️ value (health = |Merit|). ☁️ remains unchanged.
     * **Zero:** Immediately reincarnate in **Human Realm** (🏘️). 🌕 and 🪷 are lost, ❤️ resets to 5 hearts, ☁️ remains unchanged.

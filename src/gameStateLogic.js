@@ -219,11 +219,14 @@ export const needsReincarnationChoice = (gameState) => {
 };
 
 // Phase transition helpers
-export const getPhaseTransitionMessage = (fromPhase, toPhase, playerName) => {
+export const getPhaseTransitionMessage = (fromPhase, toPhase, playerName, playerData = null) => {
   if (fromPhase === toPhase) return null;
 
   switch (toPhase) {
     case PHASES.MORNING:
+      if (playerData) {
+        return `It is Morning. ${playerName}'s turn begins - Life: ${playerData.life}, Dana: ${playerData.dana}, Delusion: ${playerData.delusion}, Insight: ${playerData.insight}, Merit: ${playerData.merit}`;
+      }
       return `It is Morning. ${playerName}'s turn begins.`;
     case PHASES.AFTERNOON:
       return "It is now Afternoon.";

@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { Cloud, Heart, Ghost, ArrowRight, User, Sparkles, ArrowUp, ArrowDown, Move, Trophy } from 'lucide-react';
+import { getMaxDana } from './gameLogic.js';
 
 // --- Visual Components ---
 
@@ -107,11 +108,11 @@ export const MeritSlider = ({ merit, realm = 'human', playerColor = '' }) => {
 
   const getHeartPositions = (meritValue, realmType) => {
     if (realmType === 'heaven' && meritValue > 0) {
-      // Hearts fill gaps from 0 up to but NOT including merit marker
-      return Array.from({length: meritValue}, (_, i) => i);
+      // Hearts fill gap from 1 up to but NOT including merit marker position
+      return Array.from({length: meritValue - 1}, (_, i) => i + 1);
     } else if (realmType === 'hell' && meritValue < 0) {
-      // Hearts fill gaps from 0 down to but NOT including merit marker
-      return Array.from({length: Math.abs(meritValue)}, (_, i) => -i);
+      // Hearts fill gap from -1 down to but NOT including merit marker position
+      return Array.from({length: Math.abs(meritValue) - 1}, (_, i) => -(i + 1));
     }
     return [];
   };
@@ -242,14 +243,15 @@ export const LifeTrack = ({ player, previousPlayer = null }) => {
                     if (isInSpiritualRealm) {
                         trackState[position] = 'coin_socket';
                     } else {
-                        const danaStart = Math.max(age, 6);
+                        // Dana coins start immediately to the right of the head (or at position 6, whichever is further right)
+                        const danaStart = Math.max(age + 1, 6);
                         const slotIndex = position - danaStart;
 
                         if (slotIndex >= 0 && slotIndex < dana) {
                             // Dana coin is placed here
                             trackState[position] = 'coin';
                         } else {
-                            // Empty coin socket
+                            // Empty coin socket (either available or passed by head)
                             trackState[position] = 'coin_socket';
                         }
                     }
@@ -460,42 +462,112 @@ export const PlayerCard = ({ player, isActive, previousPlayer = null }) => {
     );
 };
 
-// Location Renderer
+// Location theming with rulebook emojis
+const getLocationTheme = (locationId) => {
+  switch (locationId) {
+    case 'cave':
+      return {
+        icon: '⛰️',
+        circleColors: 'border-stone-500 bg-stone-50'
+      };
+    case 'forest':
+      return {
+        icon: '🌲',
+        circleColors: 'border-green-500 bg-green-50'
+      };
+    case 'town':
+      return {
+        icon: '🏘️',
+        circleColors: 'border-amber-500 bg-amber-50'
+      };
+    case 'temple':
+      return {
+        icon: '⛩️',
+        circleColors: 'border-purple-500 bg-purple-50'
+      };
+    default:
+      return {
+        icon: '📍',
+        circleColors: 'border-gray-300 bg-white'
+      };
+  }
+};
+
+// Location Renderer - simple squares with proper meeples
 export const LocationCard = ({ location, playersHere, isCurrentLoc, isMoveTarget, isDimmed, isNormal, onLocationClick }) => {
     const meditatingPlayers = playersHere.filter(p => p.isMeditating);
     const nonMeditatingPlayers = playersHere.filter(p => !p.isMeditating);
+    const theme = getLocationTheme(location.id);
 
     return (
-      <div onClick={() => onLocationClick(location.id)} className={`relative flex flex-col items-center p-2 border-2 rounded-lg w-28 h-28 shrink-0 transition-all duration-300 ${isCurrentLoc ? 'border-yellow-400 bg-yellow-50 shadow-md z-10 scale-105' : ''} ${isMoveTarget ? 'border-green-400 bg-green-50 cursor-pointer shadow-lg scale-105 z-10 animate-pulse' : ''} ${isDimmed ? 'border-gray-200 bg-gray-100 opacity-40 grayscale' : ''} ${isNormal && !isCurrentLoc ? 'border-gray-200 bg-white opacity-90' : ''}`}>
-        <div className="absolute top-2 w-full text-center">
-            <div className="font-bold text-gray-700 leading-none">{location.name}</div>
-            <div className="text-[10px] text-gray-400 mt-1">
-                {location.id === 'forest' ? 'Max 2' : location.id === 'cave' ? 'Max 1' : ''}
-            </div>
+      <div className="flex flex-col items-center w-24 shrink-0">
+        {/* Location icon */}
+        <div className="text-2xl mb-2">{theme.icon}</div>
+
+        {/* Main square area - clickable */}
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            onLocationClick(location.id);
+          }}
+          className={`
+            w-20 h-20 border-2 cursor-pointer
+            flex items-center justify-center shadow-md
+            transition-all duration-300
+            ${isCurrentLoc ? 'border-yellow-400 bg-yellow-100 shadow-lg scale-105' : ''}
+            ${isMoveTarget ? 'border-green-400 bg-green-100 shadow-lg scale-105 animate-pulse' : ''}
+            ${isDimmed ? 'opacity-40 grayscale border-gray-300 bg-gray-100' : ''}
+            ${isNormal && !isCurrentLoc ? theme.circleColors : ''}
+          `}
+        >
+          {/* Players in the location (not meditating) */}
+          <div className="flex flex-wrap items-center justify-center gap-1 pointer-events-none">
+            {nonMeditatingPlayers.map(p => (
+              <div key={p.id} className="pointer-events-none">
+                <Meeple player={p} size="small" />
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Meditation slots (middle area) */}
-        {location.meditationSlots > 0 && (
-            <div className="absolute top-12 w-full flex justify-center">
-                <div className="flex gap-0.5">
-                    {[...Array(location.meditationSlots)].map((_, i) => {
-                        const meditator = meditatingPlayers[i];
-                        return (
-                            <div key={i} className="w-4 h-4 rounded-full border border-blue-300 bg-blue-50 flex items-center justify-center">
-                                {meditator ? (
-                                    <div className={`w-2 h-2 rounded-full ${meditator.color} border border-white`}></div>
-                                ) : (
-                                    <span className="text-[8px] text-blue-400">🧘</span>
-                                )}
-                            </div>
-                        );
-                    })}
+        {/* Meditation slots below */}
+        {location.meditationSlots > 0 ? (
+          <div className="flex gap-1 mt-2">
+            {[...Array(location.meditationSlots)].map((_, i) => {
+              const meditator = meditatingPlayers[i];
+              return (
+                <div key={i} className="w-8 h-8 border-2 border-gray-300 bg-white flex items-center justify-center rounded-sm shadow-sm">
+                  {meditator ? (
+                    <Meeple player={meditator} size="small" />
+                  ) : null}
                 </div>
-            </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Spacer for locations without meditation slots */
+          <div className="h-10 mt-2"></div>
         )}
+      </div>
+    );
+};
 
-        <div className="absolute bottom-2 w-full flex justify-center gap-1 px-1">
-            {nonMeditatingPlayers.map(p => (<Meeple key={p.id} player={p} size="small" />))}
+// Spiritual Realm Circle
+export const SpiritualRealmCard = ({ realm, playersHere }) => {
+    const isHeaven = realm === 'heaven';
+    return (
+      <div className="flex flex-col items-center">
+        <div className="text-2xl mb-2">{isHeaven ? '🪽' : '🔥'}</div>
+        <div className={`
+          w-16 h-16 rounded-full border-3 shadow-md
+          flex items-center justify-center
+          ${isHeaven ? 'border-blue-400 bg-blue-50' : 'border-red-400 bg-red-50'}
+        `}>
+          <div className="flex flex-wrap items-center justify-center gap-0.5">
+            {playersHere.map(p => (
+              <div key={p.id} className={`w-2 h-2 rounded-full ${p.color}`}></div>
+            ))}
+          </div>
         </div>
       </div>
     );

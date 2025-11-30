@@ -2,7 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, ArrowUp, ArrowDown, Move, Trophy, Cloud, Heart } from 'lucide-react';
 
 // Import game logic (no React dependencies)
-import { GameController, LOCATIONS } from './gameLogic.js';
+import { GameController, LOCATIONS, getMaxDana } from './gameLogic.js';
+
+// Hot reload timestamp for development - force reload for gameLogic changes
+const RELOAD_TIMESTAMP = new Date().toLocaleTimeString('en-US', {
+  hour12: true,
+  hour: 'numeric',
+  minute: '2-digit',
+  second: '2-digit'
+});
 
 // Import rendering components
 import {
@@ -11,6 +19,7 @@ import {
   Meeple,
   PlayerCard,
   LocationCard,
+  SpiritualRealmCard,
   ActionButton,
   getPlayerLogColor,
   getBorderColor,
@@ -20,7 +29,7 @@ import {
 } from './gameRenderer.jsx';
 
 const HungryGhostGame = () => {
-  // Initialize game controller
+  // Initialize game controller - force reinit for updates
   const [gameController] = useState(() => new GameController());
   const [gameState, setGameState] = useState(gameController.getState());
   const [previousGameState, setPreviousGameState] = useState(null);
@@ -41,19 +50,7 @@ const HungryGhostGame = () => {
     }
   }, [gameState.logs]);
 
-  // Auto-advance spiritual realm players to evening instantly
-  useEffect(() => {
-    const currentPlayer = gameController.getCurrentPlayer();
-    if (currentPlayer.realm !== 'human' && gameState.phase !== 'evening') {
-      if (gameState.phase === 'morning') {
-        gameController.advancePhase();
-        syncGameState();
-      } else if (gameState.phase === 'afternoon') {
-        gameController.advancePhase();
-        syncGameState();
-      }
-    }
-  }, [gameState.phase]);
+  // Spiritual realm players now have proper morning and evening phases, no afternoon phase
 
   // Check for reincarnation triggers
   useEffect(() => {
@@ -63,13 +60,9 @@ const HungryGhostGame = () => {
         // For humans, always show evening choice - they use the aging track system
         gameController.state.showEveningChoice = true;
         syncGameState();
-      } else if (currentPlayer.realm === 'heaven' && (currentPlayer.life <= 0 || currentPlayer.merit === 0)) {
-        // Auto-reincarnate from spiritual realms
-        gameController.chooseToDie();
-        syncGameState();
-      } else if (currentPlayer.realm === 'hell' && (currentPlayer.life <= 0 || currentPlayer.merit === 0)) {
-        // Auto-reincarnate from spiritual realms
-        gameController.chooseToDie();
+      } else if (currentPlayer.realm === 'heaven' || currentPlayer.realm === 'hell') {
+        // For spiritual realms, always show evening choice - player must manually choose DIE
+        gameController.state.showEveningChoice = true;
         syncGameState();
       }
     }
@@ -125,6 +118,15 @@ const HungryGhostGame = () => {
       case 'advancePhase':
         gameController.advancePhase();
         break;
+      case 'bliss':
+        gameController.handleBliss();
+        break;
+      case 'agony':
+        gameController.handleAgony();
+        break;
+      case 'spiritualAge':
+        gameController.handleSpiritualAge();
+        break;
       default:
         console.warn(`Unknown action: ${action}`);
         return;
@@ -153,11 +155,32 @@ const HungryGhostGame = () => {
 
   // Derived state from game controller
   const currentPlayer = gameController.getCurrentPlayer();
+
+  // Early return if no current player to prevent crashes
+  if (!currentPlayer) {
+    return <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center gap-4">
+      <div className="text-red-600 font-bold">Game Error: No current player found</div>
+      <div className="text-xs text-gray-600 text-center">
+        Game state may have been corrupted by hot reload.
+      </div>
+      <button
+        onClick={() => {
+          gameController.resetGame();
+          syncGameState();
+        }}
+        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >
+        Reset Game
+      </button>
+      <div className="text-xs text-gray-500">Or try refreshing the page</div>
+    </div>;
+  }
+
   const getPlayersAt = (locId, players) => players.filter(p => p.location === locId && p.realm === 'human');
   const othersHere = getPlayersAt(currentPlayer.location, gameState.players).filter(p => p.id !== currentPlayer.id);
   const canInteract = currentPlayer.location === 'town' || othersHere.length > 0;
   const mustTakeRobes = currentPlayer.realm === 'human' && currentPlayer.location === 'temple' && !currentPlayer.isMonk && !gameState.showEveningChoice;
-  const availableMeditationSlots = gameController.getAvailableMeditationSlots(currentPlayer.location);
+  const availableMeditationSlots = gameController.getAvailableMeditationSlots(currentPlayer.location, currentPlayer.id);
   const canMeditate = !gameState.isMoving && currentPlayer.isMeditator && availableMeditationSlots > 0;
 
   const renderLocation = (loc, gameStateData, currentPlayerData, locations) => {
@@ -204,30 +227,41 @@ const HungryGhostGame = () => {
         </div>
 
         <div className="lg:col-span-7 flex flex-col gap-4 h-full">
-          <div className={`border-4 border-stone-300 rounded-xl bg-stone-200/50 p-2 shrink-0 flex flex-col gap-2 shadow-inner transition-all ${gameState.isMoving ? 'grayscale-0 opacity-100' : 'grayscale-[0.2] opacity-90'}`}>
-            <div className="bg-stone-200 p-2 rounded-lg border border-stone-300 overflow-x-auto">
-              <div className="flex justify-between items-center min-w-[500px]">
+          <div className={`border-4 border-amber-600 rounded-xl bg-gradient-to-b from-amber-50 to-stone-100 p-4 shrink-0 shadow-xl transition-all ${gameState.isMoving ? 'ring-4 ring-green-400' : ''}`}>
+
+            {/* Human Realm Locations */}
+            <div className="bg-gradient-to-r from-white via-amber-25 to-white p-4 rounded-lg border-2 border-amber-200 shadow-inner">
+              <div className="flex justify-between items-center">
                 {LOCATIONS.map((loc, i) => (
                   <React.Fragment key={loc.id}>
                     {renderLocation(loc, gameState, currentPlayer, LOCATIONS)}
-                    {i < LOCATIONS.length - 1 && <div className="h-2 bg-stone-300 flex-1 mx-2 rounded-full border border-stone-400"></div>}
+                    {i < LOCATIONS.length - 1 && (
+                      <div className="h-1 bg-gradient-to-r from-amber-300 to-amber-400 flex-1 mx-4 rounded-full shadow-sm"></div>
+                    )}
                   </React.Fragment>
                 ))}
               </div>
             </div>
-            <div className="flex gap-2">
-              <div className="flex-1 p-2 bg-blue-50 border border-blue-100 rounded-lg flex items-center gap-2 justify-between h-16">
-                <div className="text-blue-300 font-bold text-xs w-16 text-center">HEAVEN</div>
-                <div className="flex gap-1 flex-wrap justify-end">
-                  {gameState.players.filter(p => p.realm === 'heaven').map(p => (<Meeple key={p.id} player={p} size="small" />))}
-                  {gameState.players.filter(p => p.realm === 'heaven').length === 0 && <span className="text-blue-200 text-xs italic">Empty</span>}
+
+            {/* Divider */}
+            <div className="border-t border-stone-300 mx-8"></div>
+
+            {/* Spiritual Realms */}
+            <div className="flex gap-4 mt-2">
+              <div className="flex-1 p-3 bg-gradient-to-br from-blue-100 to-purple-100 border-2 border-blue-300 rounded-lg shadow-lg flex items-center justify-between">
+                <span className="text-3xl">🪽</span>
+                <div className="flex gap-1">
+                  {gameState.players.filter(p => p.realm === 'heaven').map(p => (
+                    <Meeple key={p.id} player={p} size="small" />
+                  ))}
                 </div>
               </div>
-              <div className="flex-1 p-2 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2 justify-between h-16">
-                <div className="text-red-300 font-bold text-xs w-16 text-center">HELL</div>
-                <div className="flex gap-1 flex-wrap justify-end">
-                  {gameState.players.filter(p => p.realm === 'hell').map(p => (<Meeple key={p.id} player={p} size="small" />))}
-                  {gameState.players.filter(p => p.realm === 'hell').length === 0 && <span className="text-red-200 text-xs italic">Empty</span>}
+              <div className="flex-1 p-3 bg-gradient-to-br from-red-100 to-orange-100 border-2 border-red-300 rounded-lg shadow-lg flex items-center justify-between">
+                <span className="text-3xl">🔥</span>
+                <div className="flex gap-1">
+                  {gameState.players.filter(p => p.realm === 'hell').map(p => (
+                    <Meeple key={p.id} player={p} size="small" />
+                  ))}
                 </div>
               </div>
             </div>
@@ -241,9 +275,14 @@ const HungryGhostGame = () => {
                   <div className="text-[10px] font-normal">Life: {currentPlayer.lifeCount}</div>
                   <div className="text-[10px] font-normal">Day: {currentPlayer.dayCount}</div>
                 </div>
-                <span className="flex items-center gap-1 font-normal bg-white/50 px-2 py-0.5 rounded text-[10px] uppercase">
-                  {getPhaseIcon(gameState.phase)} {gameState.phase}
-                </span>
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="flex items-center gap-1 font-normal bg-white/50 px-2 py-0.5 rounded text-[10px] uppercase">
+                    {getPhaseIcon(gameState.phase)} {gameState.phase}
+                  </span>
+                  <span className="text-[8px] text-gray-500 bg-gray-100/50 px-1 py-0.5 rounded">
+                    ⟲ {RELOAD_TIMESTAMP}
+                  </span>
+                </div>
               </h3>
               <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1 min-h-0 mb-2">
                 {mustTakeRobes ? (
@@ -256,8 +295,8 @@ const HungryGhostGame = () => {
                     <ActionButton label="Move" onClick={() => handleAction('toggleMoveMode')} active={gameState.isMoving} icon={<Move size={14}/>} />
                     <ActionButton label="Meditate" onClick={() => handleAction('meditate')} disabled={!canMeditate} icon={<><ArrowDown size={10}/><Cloud size={12}/></>} />
                     <ActionButton label="Good Deed" onClick={() => handleAction('goodDeed')} disabled={gameState.isMoving || currentPlayer.dana < 1 || !canInteract} icon={<><ArrowDown size={10}/><DanaCoin size={10}/><ArrowUp size={10}/><YinYang size={10} filled={true}/></>} />
-                    <ActionButton label="Bad Deed" onClick={() => handleAction('badDeed')} disabled={gameState.isMoving || !canInteract || currentPlayer.dana >= 10} icon={<><ArrowDown size={10}/><YinYang size={10} filled={true}/><ArrowUp size={10}/><DanaCoin size={10}/></>} />
-                    <ActionButton label="Alms" onClick={() => handleAction('alms')} disabled={gameState.isMoving || gameState.phase !== 'morning' || !currentPlayer.isMonk || currentPlayer.location !== 'town'} icon={<><ArrowUp size={10}/><DanaCoin size={10}/></>} />
+                    <ActionButton label="Bad Deed" onClick={() => handleAction('badDeed')} disabled={gameState.isMoving || !canInteract || currentPlayer.dana >= getMaxDana(currentPlayer)} icon={<><ArrowDown size={10}/><YinYang size={10} filled={true}/><ArrowUp size={10}/><DanaCoin size={10}/></>} />
+                    <ActionButton label="Alms" onClick={() => handleAction('alms')} disabled={gameState.isMoving || gameState.phase !== 'morning' || !currentPlayer.isMonk || currentPlayer.location !== 'town' || currentPlayer.dana >= getMaxDana(currentPlayer)} icon={<><ArrowUp size={10}/><DanaCoin size={10}/></>} />
                     <ActionButton
                       label="Skip"
                       onClick={() => handleAction('advancePhase')}
@@ -265,12 +304,35 @@ const HungryGhostGame = () => {
                       icon={<><span className="text-xs">⏭️</span>{gameState.phase === 'morning' ? <span className="text-xs">☀️</span> : <span className="text-xs">🌙</span>}</>}
                     />
                   </>
-                ) : currentPlayer.realm !== 'human' && gameState.phase !== 'evening' ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
-                    <p className="text-[10px] text-gray-500">Time passes in <span className="font-bold uppercase">{currentPlayer.realm}</span></p>
-                    <p className="text-xs text-gray-400">⏭️ Auto-advancing to Evening</p>
+                ) : currentPlayer.realm !== 'human' && gameState.phase === 'morning' ? (
+                  <div className="flex flex-col gap-2">
+                    {currentPlayer.realm === 'heaven' ? (
+                      <>
+                        <ActionButton
+                          label="Bliss"
+                          onClick={() => handleAction('bliss')}
+                          mandatory={true}
+                          icon={<><span className="text-xs">☁️</span><ArrowDown size={8}/></>}
+                        />
+                        <p className="text-center text-[8px] text-gray-500">
+                          Heavenly bliss: Delusion -1
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <ActionButton
+                          label="Agony"
+                          onClick={() => handleAction('agony')}
+                          mandatory={true}
+                          icon={<><span className="text-xs">☁️</span><ArrowUp size={8}/></>}
+                        />
+                        <p className="text-center text-[8px] text-gray-500">
+                          Hellish agony: Delusion +1
+                        </p>
+                      </>
+                    )}
                   </div>
-                ) : gameState.showEveningChoice ? (
+                ) : gameState.showEveningChoice && currentPlayer.realm === 'human' ? (
                   <>
                     <ActionButton
                       label="Age"
@@ -338,24 +400,23 @@ const HungryGhostGame = () => {
                     )}
                   </div>
                 ) : gameState.phase === 'evening' && currentPlayer.realm !== 'human' ? (
-                  <div className="flex flex-col gap-2 h-full justify-center">
+                  <>
                     <ActionButton
-                      label="Wait"
-                      onClick={() => {
-                        gameController.handleEveningArrival();
-                        gameController.advancePhase();
-                        syncGameState();
-                      }}
-                      mandatory={true}
+                      label="Age"
+                      onClick={() => handleAction('spiritualAge')}
+                      disabled={currentPlayer.merit === 0}
                       icon={currentPlayer.realm === 'heaven' ?
-                        <><YinYang size={10} filled={true}/><ArrowDown size={8}/><span className="text-xs">☁️</span><ArrowDown size={8}/></> :
-                        <><YinYang size={10} filled={true}/><ArrowUp size={8}/><span className="text-xs">☁️</span><ArrowUp size={8}/></>
+                        <><YinYang size={10} filled={true}/><span className="text-xs">←</span><Heart size={12} className="text-red-500 fill-red-500"/><ArrowDown size={8}/></> :
+                        <><YinYang size={10} filled={true}/><span className="text-xs">→</span><Heart size={12} className="text-red-500 fill-red-500"/><ArrowDown size={8}/></>
                       }
                     />
-                    <p className="text-center text-[8px] text-gray-500">
-                      {currentPlayer.realm === 'heaven' ? 'Karma down, delusion down' : 'Karma up, delusion up'}
-                    </p>
-                  </div>
+                    <ActionButton
+                      label="Die"
+                      onClick={() => handleAction('chooseToDie')}
+                      disabled={currentPlayer.merit !== 0}
+                      icon={<><span className="text-sm">💀</span><span className="text-sm">🔄</span></>}
+                    />
+                  </>
                 ) : gameState.phase === 'evening' ? (
                   <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
                     <p className="text-[10px] text-gray-500">Evening Ritual Complete</p>

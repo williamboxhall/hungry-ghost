@@ -1,10 +1,22 @@
 // Game Logic Module - Pure functions for game state management
 // This module contains no React or DOM dependencies
 
+import { getPhaseTransitionMessage, PHASES } from './gameStateLogic.js';
+
 // Constants
 export const MAX_MERIT = 5;
 export const MIN_MERIT = -5;
+export const BASE_MAX_DANA = 10;
+
+// Calculate maximum Dana based on player's age position
+// Dana slots start at position 6, so max Dana = 10 - max(0, age - 5)
+export const getMaxDana = (player) => {
+  const danaStart = 6;
+  const ageInDanaTrack = Math.max(0, player.age - 5);
+  return Math.max(0, BASE_MAX_DANA - ageInDanaTrack);
+};
 export const INITIAL_DELUSION = 30;
+export const MAX_DELUSION = 30;
 export const WINNING_INSIGHT = 7;
 export const INITIAL_LIFE = 5;
 
@@ -51,26 +63,26 @@ export const updatePlayerInArray = (players, playerId, updates) =>
 
 export const createAgeAction = (player) => {
   const newPosition = player.age + 1;
+  const newPlayer = { ...player, age: newPosition };
 
   // Check if there's a heart to collect
   if (newPosition <= 5 && player.age < newPosition) {
-    return {
-      ...player,
-      age: newPosition,
-      life: player.life + 1
-    };
-  } else {
-    return {
-      ...player,
-      age: newPosition
-    };
+    newPlayer.life = player.life + 1;
   }
+
+  // Reduce Dana if it exceeds the new capacity after aging
+  newPlayer.dana = Math.min(getMaxDana(newPlayer), player.dana);
+
+  return newPlayer;
 };
 
 export const createExtendAction = (player) => {
   const currentPos = player.age;
   const newPosition = currentPos + 1;
 
+  // For EXTEND, we specifically place Dana in the slot we're moving into,
+  // so just reduce Dana by 1 and move - no additional capacity reduction needed
+  // The Dana placement logic handles which coin gets visually removed
   return {
     ...player,
     dana: player.dana - 1,
@@ -110,14 +122,14 @@ export const createBadDeedAction = (player, victimsWithDana, townBonus) => {
   return {
     ...player,
     merit: Math.max(MIN_MERIT, player.merit - totalStolen),
-    dana: player.dana + totalStolen
+    dana: Math.min(getMaxDana(player), player.dana + totalStolen)
   };
 };
 
 export const createAlmsAction = (player) => {
   return {
     ...player,
-    dana: player.dana + 1
+    dana: Math.min(getMaxDana(player), player.dana + 1)
   };
 };
 
@@ -135,7 +147,7 @@ export const createMoveAction = (player, targetLocation) => {
   // Greedy logic - steal dana when entering town
   if (player.isGreedy && targetLocation === 'town') {
     updatedPlayer.merit = Math.max(MIN_MERIT, updatedPlayer.merit - 1);
-    updatedPlayer.dana = updatedPlayer.dana + 1;
+    updatedPlayer.dana = Math.min(getMaxDana(updatedPlayer), updatedPlayer.dana + 1);
   }
 
   return updatedPlayer;
@@ -181,8 +193,8 @@ export const prepareReincarnation = (player) => {
     else if (player.realm === 'hell') nextRole.isGreedy = true;
   }
 
-  if (nextRealm === 'heaven') startingLife = player.merit;
-  else if (nextRealm === 'hell') startingLife = Math.abs(player.merit);
+  if (nextRealm === 'heaven') startingLife = Math.max(0, player.merit - 1);
+  else if (nextRealm === 'hell') startingLife = Math.max(0, Math.abs(player.merit) - 1);
 
   return { type: 'reincarnate', player, nextRealm, nextRole, startingLife };
 };
@@ -241,6 +253,12 @@ export const applyLocationInteractions = (players, movingPlayer, targetLocation)
   if (teachers.length > 0 && !updatedMovingPlayer.isMeditator) {
     updatedMovingPlayer.isMeditator = true;
 
+    // Store the teaching event to be logged
+    updatedMovingPlayer._teachingEvent = {
+      teacher: teachers[0],
+      message: `${updatedMovingPlayer.name} learned meditation from ${teachers[0].name}`
+    };
+
     // Teachers gain merit
     updatedPlayers = updatedPlayers.map(p => {
       if (teachers.some(t => t.id === p.id)) {
@@ -261,7 +279,7 @@ export const applyLocationInteractions = (players, movingPlayer, targetLocation)
         if (p.id === greedy.id) {
           return {
             ...p,
-            dana: p.dana + 1,
+            dana: Math.min(getMaxDana(p), p.dana + 1),
             merit: Math.max(MIN_MERIT, p.merit - 1)
           };
         }
@@ -294,9 +312,9 @@ export const canTakeAction = (player, action, gameState) => {
     case 'badDeed':
       const canSteal = player.location === 'town' ||
         getPlayersAt(gameState.players, player.location).some(p => p.id !== player.id && p.dana > 0);
-      return phase !== 'evening' && !isMoving && player.dana < 10 && canSteal;
+      return phase !== 'evening' && !isMoving && player.dana < getMaxDana(player) && canSteal;
     case 'alms':
-      return phase === 'morning' && !isMoving && player.isMonk && player.location === 'town';
+      return phase === 'morning' && !isMoving && player.isMonk && player.location === 'town' && player.dana < getMaxDana(player);
     case 'age':
       return phase === 'evening' && player.age < 5;
     case 'extend':
@@ -315,6 +333,10 @@ export const canTakeAction = (player, action, gameState) => {
 // Game Controller - handles all game orchestration
 export class GameController {
   constructor() {
+    this.initializeState();
+  }
+
+  initializeState() {
     this.state = {
       turnCount: 1,
       currentPlayerIdx: 0,
@@ -334,11 +356,25 @@ export class GameController {
     };
   }
 
+  // Method to reset game if state gets corrupted
+  resetGame() {
+    console.log('Resetting game state...');
+    this.initializeState();
+  }
+
   getState() {
     return { ...this.state };
   }
 
   getCurrentPlayer() {
+    if (!this.state.players || this.state.players.length === 0) {
+      console.error('No players available', this.state.players);
+      return null;
+    }
+    if (this.state.currentPlayerIdx < 0 || this.state.currentPlayerIdx >= this.state.players.length) {
+      console.error('Invalid currentPlayerIdx:', this.state.currentPlayerIdx, 'players length:', this.state.players.length);
+      return null;
+    }
     return this.state.players[this.state.currentPlayerIdx];
   }
 
@@ -355,9 +391,17 @@ export class GameController {
   }
 
   advancePhase() {
+    const currentPlayer = this.getCurrentPlayer();
+
     if (this.state.phase === 'morning') {
-      this.state.phase = 'afternoon';
-      this.addLog("It is now Afternoon.", "neutral");
+      // Spiritual realm players skip afternoon phase
+      if (currentPlayer && currentPlayer.realm !== 'human') {
+        this.state.phase = 'evening';
+        this.addLog("It is now Evening. Time for the end of day ritual.", "neutral");
+      } else {
+        this.state.phase = 'afternoon';
+        this.addLog("It is now Afternoon.", "neutral");
+      }
     } else if (this.state.phase === 'afternoon') {
       this.state.phase = 'evening';
       this.addLog("It is now Evening. Time for the end of day ritual.", "neutral");
@@ -373,7 +417,16 @@ export class GameController {
       );
 
       this.state.currentPlayerIdx = nextIdx;
-      this.addLog(`It is Morning. ${this.state.players[nextIdx].name}'s turn begins.`, "neutral", nextIdx);
+
+      // Log turn start with currency data (colored by player)
+      const nextPlayer = this.state.players.find(p => p.id === nextIdx);
+      console.log('DEBUG: nextIdx =', nextIdx, 'nextPlayer =', nextPlayer, 'nextPlayer.id =', nextPlayer?.id);
+      if (nextPlayer) {
+        const turnMessage = getPhaseTransitionMessage('evening', PHASES.MORNING, nextPlayer.name, nextPlayer);
+        if (turnMessage) {
+          this.addLog(turnMessage, "player", nextPlayer.id);
+        }
+      }
     }
   }
 
@@ -397,15 +450,15 @@ export class GameController {
     const me = this.state.players.find(p => p.id === this.state.currentPlayerIdx);
 
     // Apply location interactions
-    const locationResult = applyLocationInteractions(this.state.players, me, targetLoc);
-    this.state.players = locationResult.players;
+    this.state.players = applyLocationInteractions(this.state.players, me, targetLoc);
 
-    // Log interaction messages
-    locationResult.interactions.forEach(interaction => {
-      if (interaction.message) {
-        this.addLog(interaction.message, "player", interaction.student.id);
-      }
-    });
+    // Check for teaching events
+    const updatedPlayer = this.state.players.find(p => p.id === this.state.currentPlayerIdx);
+    if (updatedPlayer._teachingEvent) {
+      this.addLog(updatedPlayer._teachingEvent.message, "player", updatedPlayer.id);
+      // Clean up the temporary teaching event
+      delete updatedPlayer._teachingEvent;
+    }
 
     if (greedyLog) {
       this.addLog(greedyLog.message, "player", greedyLog.playerId);
@@ -416,12 +469,14 @@ export class GameController {
   }
 
   // Check available meditation slots at a location
-  getAvailableMeditationSlots(locationId) {
+  getAvailableMeditationSlots(locationId, excludePlayerId = null) {
     const location = LOCATIONS.find(l => l.id === locationId);
     if (!location || location.meditationSlots === 0) return 0;
 
     const playersAtLocation = getPlayersAt(this.state.players, locationId);
-    const meditatingPlayers = playersAtLocation.filter(p => p.isMeditating);
+    const meditatingPlayers = playersAtLocation.filter(p =>
+      p.isMeditating && p.id !== excludePlayerId
+    );
 
     return location.meditationSlots - meditatingPlayers.length;
   }
@@ -437,7 +492,7 @@ export class GameController {
     }
 
     // Check if there are available meditation slots
-    const availableSlots = this.getAvailableMeditationSlots(loc.id);
+    const availableSlots = this.getAvailableMeditationSlots(loc.id, currentPlayer.id);
     if (availableSlots === 0) {
       this.addLog(`${currentPlayer.name} cannot meditate - all meditation slots occupied in ${loc.name}`, "player", currentPlayer.id);
       return;
@@ -477,7 +532,7 @@ export class GameController {
     if (others.length > 0 && currentPlayer.location !== 'town') {
       const receiver = others[0];
       this.updatePlayer(receiver.id, (prev) => ({
-        dana: prev.dana + 1,
+        dana: Math.min(getMaxDana(prev), prev.dana + 1),
         gainingDana: true
       }));
 
@@ -571,26 +626,61 @@ export class GameController {
     this.addLog(`${currentPlayer.name} ordained as a Monk (lost all Dana -${danaLost}, Dana: 0)`, "player", currentPlayer.id);
   }
 
+  handleBliss() {
+    const currentPlayer = this.getCurrentPlayer();
+    const newDelusion = Math.max(0, currentPlayer.delusion - 1);
+
+    this.updatePlayer(currentPlayer.id, { delusion: newDelusion });
+    if (newDelusion < currentPlayer.delusion) {
+      this.addLog(`${currentPlayer.name} experienced heavenly bliss: Delusion -1 (Delusion: ${newDelusion})`, "player", currentPlayer.id);
+    } else {
+      this.addLog(`${currentPlayer.name} experienced heavenly bliss: already at minimum delusion (Delusion: ${newDelusion})`, "player", currentPlayer.id);
+    }
+    this.advancePhase();
+  }
+
+  handleAgony() {
+    const currentPlayer = this.getCurrentPlayer();
+    const newDelusion = Math.min(MAX_DELUSION, currentPlayer.delusion + 1);
+
+    this.updatePlayer(currentPlayer.id, { delusion: newDelusion });
+    if (newDelusion > currentPlayer.delusion) {
+      this.addLog(`${currentPlayer.name} endured hellish agony: Delusion +1 (Delusion: ${newDelusion})`, "player", currentPlayer.id);
+    } else {
+      this.addLog(`${currentPlayer.name} endured hellish agony: already at maximum delusion (Delusion: ${newDelusion})`, "player", currentPlayer.id);
+    }
+    this.advancePhase();
+  }
+
+  handleSpiritualAge() {
+    const currentPlayer = this.getCurrentPlayer();
+
+    // In spiritual realms, aging moves merit toward zero AND updates life accordingly
+    let newMerit;
+    let newLife;
+
+    if (currentPlayer.realm === 'heaven') {
+      newMerit = Math.max(0, currentPlayer.merit - 1);
+      newLife = Math.max(0, newMerit - 1); // Hearts fill between 1 and merit position (exclusive)
+    } else { // hell
+      newMerit = Math.min(0, currentPlayer.merit + 1);
+      newLife = Math.max(0, Math.abs(newMerit) - 1); // Hearts fill between -1 and merit position (exclusive)
+    }
+
+    this.updatePlayer(currentPlayer.id, { merit: newMerit, life: newLife });
+    this.addLog(`${currentPlayer.name} aged in ${currentPlayer.realm}: Merit ${currentPlayer.realm === 'heaven' ? '-1' : '+1'} (Merit: ${newMerit}, Life: ${newLife})`, "player", currentPlayer.id);
+    this.advancePhase();
+  }
+
   handleEveningArrival() {
     const currentPlayer = this.getCurrentPlayer();
 
     this.state.players = this.state.players.map(p => {
       if (p.id !== currentPlayer.id) return p;
 
-      let newLife = p.life - 1;
-      let newDana = p.dana;
-      let newDelusion = p.delusion;
-      let newMerit = p.merit;
-
-      if (p.realm === 'heaven') {
-        newDelusion = Math.max(0, p.delusion - 1);
-        newMerit = Math.max(0, p.merit - 1);
-        this.addLog(`${p.name} heavenly existence: Delusion -1, Merit -1 (Delusion: ${newDelusion}, Merit: ${newMerit})`, "neutral", p.id);
-      } else if (p.realm === 'hell') {
-        newDelusion = p.delusion + 1;
-        newMerit = Math.min(0, p.merit + 1);
-        newLife = Math.abs(newMerit);
-        this.addLog(`${p.name} hellish suffering: Delusion +1, Merit +1 (Delusion: ${newDelusion}, Merit: ${newMerit})`, "neutral", p.id);
+      // Spiritual realm players now use manual AGE/DIE buttons - don't auto-modify them
+      if (p.realm === 'heaven' || p.realm === 'hell') {
+        return p; // Return unchanged - spiritual realm players use manual actions
       }
 
       if (p.realm === 'human') {
@@ -598,7 +688,8 @@ export class GameController {
         this.state.showEveningChoice = true;
         return p; // Return unchanged for humans - they will choose their ritual
       }
-      return { ...p, life: newLife, dana: newDana, delusion: newDelusion, merit: newMerit };
+
+      return p;
     });
   }
 
@@ -680,7 +771,7 @@ export class GameController {
     const newPlayer = createBodhisattvaReincarnation(currentPlayer);
 
     this.updatePlayer(currentPlayer.id, newPlayer);
-    this.addLog(`${currentPlayer.name} chose the Bodhisattva path - reborn as Teacher keeping Merit ${currentPlayer.merit >= 0 ? '+' : ''}${currentPlayer.merit}`, "player", currentPlayer.id);
+    this.addLog(`${currentPlayer.name} chose the Bodhisattva path - reborn as Teacher (Life: ${newPlayer.life}, Merit: ${newPlayer.merit})`, "player", currentPlayer.id);
     this.state.showEveningChoice = false;
     this.advancePhase();
   }
@@ -703,16 +794,21 @@ export class GameController {
     const newPlayer = executeReincarnation(player, nextRealm, nextRole, startingLife);
     this.updatePlayer(player.id, newPlayer);
 
-    this.addLog(`${player.name} reincarnated in ${nextRealm} Realm!`, "player", player.id);
+    this.addLog(`${player.name} reincarnated in ${nextRealm} Realm! (Life: ${newPlayer.life}, Merit: ${newPlayer.merit})`, "player", player.id);
   }
 
   toggleMoveMode() {
     if (this.state.phase === 'evening') return;
-    if (this.getCurrentPlayer().realm !== 'human') return;
+
+    const currentPlayer = this.getCurrentPlayer();
+    if (!currentPlayer) return;
+    if (currentPlayer.realm !== 'human') return;
 
     this.state.isMoving = !this.state.isMoving;
     if (this.state.isMoving) {
-      this.addLog("Select a location to move to.", "player", this.getCurrentPlayer().id);
+      this.addLog("Select a location to move to.", "player", currentPlayer.id);
+    } else {
+      this.addLog("Movement cancelled.", "player", currentPlayer.id);
     }
   }
 
@@ -720,6 +816,11 @@ export class GameController {
     if (!this.state.isMoving) return;
 
     const currentPlayer = this.getCurrentPlayer();
+    if (!currentPlayer) {
+      console.error('No current player available for location click');
+      return;
+    }
+
     const currentLocIdx = LOCATIONS.findIndex(l => l.id === currentPlayer.location);
     const targetLocIdx = LOCATIONS.findIndex(l => l.id === locId);
 

@@ -4,6 +4,14 @@
 // Constants
 export const MAX_MERIT = 5;
 export const MIN_MERIT = -5;
+export const BASE_MAX_DANA = 10;
+
+// Calculate maximum Dana based on player's age position
+// Dana slots start at position 6, so max Dana = 10 - max(0, age - 5)
+export const getMaxDana = (player) => {
+  const ageInDanaTrack = Math.max(0, player.age - 5);
+  return Math.max(0, BASE_MAX_DANA - ageInDanaTrack);
+};
 export const INITIAL_DELUSION = 30;
 export const WINNING_INSIGHT = 7;
 export const INITIAL_LIFE = 5;
@@ -111,12 +119,12 @@ export const setPlayerMerit = (player, merit) => ({
 // Dana operations
 export const adjustPlayerDana = (player, adjustment) => ({
   ...player,
-  dana: Math.max(0, player.dana + adjustment)
+  dana: Math.max(0, Math.min(getMaxDana(player), player.dana + adjustment))
 });
 
 export const setPlayerDana = (player, dana) => ({
   ...player,
-  dana: Math.max(0, dana)
+  dana: Math.max(0, Math.min(getMaxDana(player), dana))
 });
 
 // Delusion operations
